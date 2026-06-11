@@ -1,32 +1,30 @@
 import * as RunsDal from "../dal/runs.ts";
-import { getProvider } from "../providers/registry.ts";
 import { logger } from "../lib/logger.ts";
 import { runWithConcurrency } from "../lib/concurrency.ts";
 import { ingestCallResult } from "../bl/runs/ingestCallResult.ts";
-import type { ProviderName } from "../providers/types.ts";
 
-const STALE_AFTER_SECONDS = 30;
+// Polling is the only convergence mechanism (no webhooks), so sweep every
+// in-flight run that already has a provider call id — including brand-new ones.
+const STALE_AFTER_SECONDS = 0;
 const CONCURRENCY = 5;
 
+/**
+ * Poll every non-terminal run with a provider call id and fold the latest
+ * provider state into the DB. This is the sole path that drives a call from
+ * "queued" to "completed" + judged.
+ */
 export const reconcileRuns = async (): Promise<void> => {
-	const stale = await RunsDal.listStaleRuns({
+	const active = await RunsDal.listStaleRuns({
 		olderThanSeconds: STALE_AFTER_SECONDS,
 	});
-	if (stale.length === 0) return;
+	if (active.length === 0) return;
 
-	logger.info("reconcileRuns sweeping", { count: stale.length });
+	logger.info("reconcileRuns polling", { count: active.length });
 
-	await runWithConcurrency(stale, CONCURRENCY, async (runRow) => {
+	await runWithConcurrency(active, CONCURRENCY, async (runRow) => {
 		if (!runRow.externalCallId) return;
 		try {
-			const provider = getProvider(runRow.provider as ProviderName);
-			const snapshot = await provider.getCall({
-				externalCallId: runRow.externalCallId,
-			});
-			await ingestCallResult({
-				externalCallId: runRow.externalCallId,
-				snapshot,
-			});
+			await ingestCallResult({ externalCallId: runRow.externalCallId });
 		} catch (err) {
 			logger.warn("reconcileRuns: one run failed", {
 				runId: runRow.id,

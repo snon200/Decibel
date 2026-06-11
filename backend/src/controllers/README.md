@@ -12,9 +12,10 @@ Express routers — the HTTP edge. Keep them **thin**: parse/validate the reques
   `POST /agents/:id/run-suite`.
 - `runs/` — `GET /runs/:id` (status + transcript + audio URL + scores; the dashboard
   polls this).
-- `competitors/` — (stretch) `POST /agents/:id/competitors` (provision a simulated
-  competitor), `GET /agents/:id/competitors`, `GET /agents/:id/comparison`.
-- `webhooks/` — inbound webhook receivers (Dial only — competitors don't notify us).
+- `competitors/` — `POST /agents/:id/competitors` (provision a simulated competitor),
+  `GET /agents/:id/competitors`, `GET /agents/:id/comparison`, `DELETE /competitors/:id`.
 
-Each subfolder has an `index.ts` exporting a router, mounted in `src/index.ts` via
-`app.use("/<name>", router)`. Validate request bodies with Zod.
+There are no webhook receivers — call results are pulled by the `jobs/` poller, not pushed.
+
+Each subfolder has an `index.ts` exporting a router, mounted in `src/index.ts`. Validate
+request bodies with Zod.

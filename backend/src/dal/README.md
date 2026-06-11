@@ -19,4 +19,4 @@ vendor calls.** Just typed CRUD that the `bl/` layer composes.
 
 - Every function takes a single object param (`{ ... }`), never positional args.
 - Return plain typed rows; let `bl/` decide what to do with them.
-- `getRunByExternalCallId` is what webhook handlers use to map a vendor event back to a run.
+- `getRunByExternalCallId` is what the reconcile poller uses to map a vendor call back to a run.

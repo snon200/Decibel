@@ -9,9 +9,9 @@ import type { CallStatus } from "../../providers/types.ts";
  * Hydrate the in-memory Run state machine from a DB row.
  *
  * The Run class is per-process and not persistent; the DB row is its
- * persistent twin. Every time we touch a run from a webhook or poller, we
- * rebuild a Run from the row, fold the new info in via applyEvent/refresh,
- * then persist the resulting state via toUpdate.
+ * persistent twin. Every time the poller touches a run, we rebuild a Run from
+ * the row, fold fresh provider state in via refresh, then persist the resulting
+ * state via toUpdate.
  */
 export const rehydrate = (input: {
 	runRow: RunRow;

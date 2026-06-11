@@ -13,10 +13,10 @@ comparison run. Same code path either way.
 interface CallProvider {
   placeCall(input: PlaceCallInput): Promise<{ externalCallId: string }>;
   getCall(externalCallId: string): Promise<NormalizedCall>;
-  verifyWebhook(raw: string, headers: Headers): boolean;
-  parseWebhookEvent(raw: string, headers: Headers): NormalizedCallEvent | null;
 }
 ```
+
+We do **not** use webhooks. Call results converge purely by polling `getCall`.
 
 `NormalizedCall` flattens Dial's payload into `{ externalCallId, status, transcript,
 audioUrl, durationSeconds }`. The rest of the backend never sees Dial-specific fields.
@@ -38,15 +38,15 @@ interface CompetitorProvider {
 Competitor providers are **never on the call critical path** — they only set up the
 target. The actual call goes through `dial.placeCall`.
 
-## No WebSockets — by design
+## No WebSockets, no webhooks — by design
 
-Every integration is plain HTTP:
+Every integration is plain HTTP, and results are pulled, never pushed:
 
 1. **Start** the call with `dial.placeCall` (REST `POST`) → returns the call id.
-2. **Receive** the result via Dial's webhook (`controllers/webhooks/dial`).
-3. **Reconcile** anything missed by polling `dial.getCall` (driven by `jobs/`).
+2. **Poll** `dial.getCall` until the call reaches a terminal status, driven by the
+   `jobs/` reconcile poller. This is the only convergence mechanism.
 
-Competitor platforms don't notify us — we just dial their number from Dial. Their
+Competitor platforms don't notify us either — we just dial their number from Dial. Their
 WebSocket APIs are for live browser/SDK audio, which we don't use.
 
 ## Files per adapter
@@ -56,9 +56,7 @@ dial/                    # CallProvider
   README.md
   client.ts              base URL + auth (thin fetch wrapper)
   placeCall.ts           build the request body, POST, return externalCallId
-  getCall.ts             GET the call, map to NormalizedCall (polling fallback)
-  verifyWebhook.ts       HMAC signature verification
-  parseWebhookEvent.ts   map the webhook body to NormalizedCallEvent
+  getCall.ts             GET the call, map to NormalizedCall (polled to convergence)
   index.ts               assemble and export the CallProvider
 
 <competitor>/            # CompetitorProvider (elevenlabs, openai, vapi, ...)

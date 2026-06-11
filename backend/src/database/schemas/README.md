@@ -26,7 +26,7 @@ Keep `counter.ts` only until the real tables land, then delete it.
 
 ## Conventions
 
-- `external_call_id` stores Dial's call id so webhooks and polling can find the run.
+- `external_call_id` stores Dial's call id so the reconcile poller can find the run.
 - Store raw vendor payloads in a `jsonb` column if useful for debugging, but the app reads
   normalized columns.
 - `target_phone_number` is denormalized onto `runs` so a deleted/edited competitor

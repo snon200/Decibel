@@ -4,7 +4,6 @@ import * as AgentsDal from "../../dal/agents.ts";
 import * as CompetitorsDal from "../../dal/competitors.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
-import { config } from "../../config/env.ts";
 import { getProvider } from "../../providers/registry.ts";
 import { Run } from "./Run.ts";
 import type { Run as RunRow, TargetKind } from "../../database/schemas/runs.ts";
@@ -64,9 +63,6 @@ export const startRun = async (input: {
 		to: resolved.phoneNumber,
 		systemPrompt: test.testerInstruction,
 		idempotencyKey: runRow.id,
-		...(config.PUBLIC_BASE_URL
-			? { webhookUrl: `${config.PUBLIC_BASE_URL}/webhooks/dial` }
-			: {}),
 	};
 
 	try {

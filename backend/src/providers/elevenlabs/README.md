@@ -20,19 +20,14 @@ Auth: header `xi-api-key: <ELEVENLABS_API_KEY>`. Base URL: `https://api.elevenla
      table.
 - **`deleteAgent(externalAgentId)`** — `DELETE /v1/convai/agents/{agent_id}` to clean up.
 
-## Why no `placeCall` / `getCall` / webhook here
+## Direct outbound + polling
 
-In the new model we *don't* call ElevenLabs to place outbound calls. We call **Dial**
-outbound *to* the ElevenLabs-managed phone number. The transcript + recording we score
-are Dial's, captured through Dial's events — exactly the same path as a user-bot run.
-This keeps the judge target-blind and the call lifecycle uniform.
-  Returns `conversation_id` as `externalCallId` (response also has `callSid`).
+ElevenLabs can also place its own outbound call (used when ElevenLabs is the tester path),
+but we never use webhooks — results converge by polling.
+- **`placeCall`** — `POST /v1/convai/twilio/outbound-call`. Returns `conversation_id` as
+  `externalCallId` (response also has `callSid`).
 - **`getCall`** — `GET /v1/convai/conversations/{conversation_id}` → map `transcript`
-  (array of turns), `status`, and `analysis` to `NormalizedCall`. Polling fallback.
-- **`verifyWebhook`** — verify the `elevenlabs-signature` header (`t=…,v0=…`,
-  HMAC-SHA256 of `${t}.${rawBody}`, 30-min timestamp tolerance).
-- **`parseWebhookEvent`** — handle `post_call_transcription` (full transcript + metadata)
-  and map to `NormalizedCallEvent`.
+  (array of turns), `status`, and `analysis` to `NormalizedCall`. Polled to convergence.
 - **`getRecordingUrl`** — no-op (returns null). Recording is only needed on the tester
   (Dial); competitor audio is out of scope.
 - **`listNumbers` / `configureInboundNumber`** — list owned numbers and host the
@@ -42,7 +37,8 @@ This keeps the judge target-blind and the call lifecycle uniform.
 ## Config
 
 Set in `backend/.env.local`: `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`,
-`ELEVENLABS_PHONE_NUMBER_ID`, `ELEVENLABS_WEBHOOK_SECRET`.
+`ELEVENLABS_PHONE_NUMBER_ID`. No webhook secret is needed — we poll, we don't receive
+callbacks.
 
 ## Notes
 

@@ -1,8 +1,8 @@
-import { placeDialCall } from "./placeCall.ts";
-import { getDialCall } from "./getCall.ts";
-import { getDialRecordingUrl } from "./getRecording.ts";
-import { parseDialWebhookEvent, verifyDialWebhook } from "./webhook.ts";
-import { configureDialInbound, listDialNumbers } from "./numbers.ts";
+import { placeElevenCall } from "./placeCall.ts";
+import { getElevenCall } from "./getCall.ts";
+import { getElevenRecordingUrl } from "./getRecording.ts";
+import { parseElevenWebhookEvent, verifyElevenWebhook } from "./webhook.ts";
+import { configureElevenInbound, listElevenNumbers } from "./numbers.ts";
 import { VoiceProvider } from "../types.ts";
 import type {
 	ConfigureInboundInput,
@@ -14,36 +14,36 @@ import type {
 	WebhookInput,
 } from "../types.ts";
 
-export class DialProvider extends VoiceProvider {
-	readonly name: ProviderName = "dial";
+export class ElevenLabsProvider extends VoiceProvider {
+	readonly name: ProviderName = "elevenlabs";
 
 	placeCall(input: PlaceCallInput): Promise<NormalizedCall> {
-		return placeDialCall(input);
+		return placeElevenCall(input);
 	}
 
 	getCall(input: { externalCallId: string }): Promise<NormalizedCall> {
-		return getDialCall(input);
+		return getElevenCall(input);
 	}
 
 	getRecordingUrl(input: { externalCallId: string }): Promise<string | null> {
-		return getDialRecordingUrl(input);
+		return getElevenRecordingUrl(input);
 	}
 
 	verifyWebhook(input: WebhookInput): boolean {
-		return verifyDialWebhook(input);
+		return verifyElevenWebhook(input);
 	}
 
 	parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null {
-		return parseDialWebhookEvent(input);
+		return parseElevenWebhookEvent(input);
 	}
 
 	listNumbers(): Promise<NormalizedNumber[]> {
-		return listDialNumbers();
+		return listElevenNumbers();
 	}
 
 	configureInboundNumber(
 		input: ConfigureInboundInput,
 	): Promise<NormalizedNumber> {
-		return configureDialInbound(input);
+		return configureElevenInbound(input);
 	}
 }

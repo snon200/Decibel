@@ -26,7 +26,7 @@ Rules:
 - If no focus is provided, fill gaps in the existing coverage: rare edge cases, hostile or impatient callers, ambiguous requests, multi-step flows, recovery from interruption, out-of-scope asks.
 - 3 to 6 criteria per test. Criteria must be VERIFIABLE FROM A TRANSCRIPT (no "tone of voice", no "spoke clearly"). Each criterion should be a single observable behaviour.
 - criterion.id is a stable kebab-case slug (e.g. "confirms-name-phone"). Slugs must be unique within a test.
-- testerInstruction must end by telling the caller to hang up gracefully when the goal is achieved or stalled.
+- testerInstruction must end by telling the caller to hang up gracefully when the goal is achieved or stalled, AND to never exceed about 8 minutes of conversation — calls are hard-capped at 10 minutes and will be terminated.
 - Do not invent specifics not in the description — design the tester to PROBE for them.
 - The bot is reached by phone, so write the tester instruction for a voice conversation, not a chat.`;
 

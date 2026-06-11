@@ -16,4 +16,14 @@ router.get("/runs/:id", async (req, res, next) => {
 	}
 });
 
+router.post("/runs/:id/cancel", async (req, res, next) => {
+	try {
+		const { id } = idParamSchema.parse(req.params);
+		const run = await RunsBl.cancelRun({ id });
+		res.status(200).json(run);
+	} catch (err) {
+		next(err);
+	}
+});
+
 export default router;

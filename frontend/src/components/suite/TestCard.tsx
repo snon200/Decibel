@@ -48,7 +48,7 @@ export default function TestCard({
 				<HistoryBtn type="button" onClick={() => setHistoryOpen(true)}>
 					History
 				</HistoryBtn>
-				{latestRun && isTerminal(latestRun.status) && (
+				{latestRun && (busy || isTerminal(latestRun.status)) && (
 					<ResultsLink to={`/runs/${latestRun.id}`}>View results →</ResultsLink>
 				)}
 			</Actions>

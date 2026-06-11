@@ -101,4 +101,24 @@ export abstract class VoiceProvider {
 	abstract configureInboundNumber(
 		input: ConfigureInboundInput,
 	): Promise<NormalizedNumber>;
+
+	/**
+	 * Best-effort: forcibly end an in-progress call at the provider.
+	 *
+	 * Default implementation is a no-op + warning. Override on providers whose
+	 * REST API exposes a hang-up endpoint. Dial's API currently doesn't (only
+	 * list / make / get on `/api/v1/calls`), so the hard 10-minute cap is
+	 * enforced in our DB by `bl/runs/timeoutStaleRuns` even when the underlying
+	 * call cannot actually be torn down.
+	 *
+	 * Resolves regardless of outcome — callers should not rely on this to
+	 * actually disconnect the line.
+	 */
+	endCall(_input: { externalCallId: string }): Promise<void> {
+		console.warn(
+			`[${this.name}] endCall is not implemented for this provider; ` +
+				`the call will continue at the vendor until the agent or PSTN ends it.`,
+		);
+		return Promise.resolve();
+	}
 }

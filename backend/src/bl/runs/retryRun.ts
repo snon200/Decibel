@@ -1,3 +1,4 @@
+import * as RunsDal from "../../dal/runs.ts";
 import { logger } from "../../lib/logger.ts";
 import { startRunResolved } from "./startRun.ts";
 import type { Run as RunRow, TargetKind } from "../../database/schemas/runs.ts";
@@ -48,6 +49,16 @@ export const retryRun = async (input: {
 	});
 
 	await wait(RETRY_DELAY_MS);
+
+	// The user may have hit Cancel during the delay — re-read the row and
+	// abort if the original run was marked canceled in the meantime.
+	const fresh = await RunsDal.getRun({ id: old.id });
+	if (!fresh || fresh.status === "canceled") {
+		logger.info("retryRun aborted — original was cancelled", {
+			originalRunId: old.id,
+		});
+		return null;
+	}
 
 	try {
 		return await startRunResolved({

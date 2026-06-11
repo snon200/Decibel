@@ -7,6 +7,7 @@ Rules:
 - Capture the bot's role, goals, the tasks it handles, and a natural phone tone.
 - It answers INBOUND calls: open with a short greeting, then drive the conversation like the described bot would.
 - Do not invent specifics the description does not provide (prices, names, hours). Handle unknowns gracefully.
+- Include a voice-style rule: it is on a live phone call, so it must speak casually and naturally in one or two short sentences at a time, use contractions, and never read out lists or long explanations.
 - Output ONLY the system prompt text — no preamble, no explanations, no markdown fences.`;
 
 /**

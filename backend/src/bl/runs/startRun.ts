@@ -11,6 +11,7 @@ import {
 } from "../competitors/resolveCompetitorTarget.ts";
 import type { Run as RunRow, TargetKind } from "../../database/schemas/runs.ts";
 import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
+import { withVoiceStyle } from "../../llm/prompts/voiceStyle.ts";
 
 /**
  * Abstract target for a single test/suite run. Competitors are identified by
@@ -79,7 +80,7 @@ export const startRunResolved = async (input: {
 	const provider = getProvider(providerName);
 	const placeCallInput: PlaceCallInput = {
 		to: input.resolved.phoneNumber,
-		systemPrompt: test.testerInstruction,
+		systemPrompt: withVoiceStyle(test.testerInstruction),
 		idempotencyKey: runRow.id,
 	};
 

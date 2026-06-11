@@ -68,7 +68,7 @@ export default function WelcomeWizard() {
 			<Inner>
 				{step === "landing" && (
 					<StepBlock key="landing">
-						<Eyebrow>Agent Arena</Eyebrow>
+						<Eyebrow>Decibel</Eyebrow>
 						<Hero>
 							Test your voice agent
 							<br />

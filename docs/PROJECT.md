@@ -1,4 +1,4 @@
-# Project: Agent Arena — a voice agent that tests other voice agents
+# Project: Decibel — a voice agent that tests other voice agents
 
 > Built for the Dial Hackathon — **"My Agent Has A Phone"** (June 11–12, 2026, Tel Aviv).
 
@@ -20,7 +20,7 @@ handles interruptions, stays on script, recovers from confusion, hits its goal �
 and manual. People test by calling their own bot and listening. That doesn't scale, it
 doesn't catch regressions, and it doesn't expose the ASR/TTS/latency stack to load.
 
-**Agent Arena turns evaluation into a two-input, one-click, phone-based test.** The user
+**Decibel turns evaluation into a two-input, one-click, phone-based test.** The user
 provides only "what the bot is" and "where to reach it"; we generate the test suite, run
 the calls, score the transcripts, and let the user listen to the recordings. Because
 everything runs over the actual telephone network via Dial, we test the real thing —
@@ -221,12 +221,12 @@ Uses the existing repo skeleton:
 
 ---
 
-## Judging criteria & how Agent Arena hits them
+## Judging criteria & how Decibel hits them
 
 Full rubric: https://getdial.ai/hackathon/my-agent-has-a-phone/criteria.
 Three criteria, 10 points each (30 total), averaged across judges. Scale: 1–3 weak · 4–6 fine · 7–8 strong · 9–10 exceptional.
 
-| # | Criterion | How Agent Arena scores |
+| # | Criterion | How Decibel scores |
 | --- | --- | --- |
 | 1 | **Real-World Impact & Market Potential** — "would this exist as a company?" | Two inputs and a click is the lowest-friction onboarding any voice-eval tool can offer — works for *every* voice-agent builder (VAPI, ElevenLabs, Retell, custom stack). Pitch: "CI for your voice agent before every deploy." Phone is the *product surface*, not a gimmick. |
 | 2 | **Technical Execution & Dial Integration** — "depth over presence" | Dial is the runtime spine: outbound calls (one per test), `call.ended` + `call.transcribed` events, transcript + audio retrieval, plus an LLM judge over the recorded conversation. The competitor stretch adds a *second* phone bot on a different platform that we dial through Dial as well — keeping Dial central even in the comparison flow. |

@@ -1,6 +1,6 @@
 # Architecture
 
-How **Agent Arena** is wired. See [`PROJECT.md`](./PROJECT.md) for the product vision.
+How **Decibel** is wired. See [`PROJECT.md`](./PROJECT.md) for the product vision.
 
 ## Guiding principles
 

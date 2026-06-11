@@ -23,6 +23,10 @@ export const judgeRun = async (input: { runId: string }): Promise<void> => {
 		scenarioSummary: test.scenarioSummary,
 		criteria: test.criteria,
 		transcript: run.transcript,
+		messages: run.messages ?? [],
+		callStartedAt: run.createdAt,
+		callEndedAt: run.completedAt,
+		durationSeconds: run.durationSeconds,
 	});
 	const output = await llm.completeJson({
 		...prompt,

@@ -39,6 +39,25 @@ export interface NormalizedCall {
 	raw: unknown;
 }
 
+export interface NormalizedMessage {
+	id: string;
+	from: string;
+	to: string;
+	body: string;
+	channel: string;
+	direction: "inbound" | "outbound";
+	/** ISO-8601 timestamp. */
+	createdAt: string;
+}
+
+export interface ListMessagesInput {
+	/** Restrict to one owned number id. */
+	numberId?: string;
+	direction?: "inbound" | "outbound";
+	/** ISO-8601; only messages after this instant. */
+	since?: string;
+}
+
 export interface NormalizedNumber {
 	id: string;
 	phoneNumber: string | null;

@@ -15,6 +15,7 @@ const fakeRun = (testId: string, agent: AgentDetail["agent"]): Run => ({
 	externalCallId: null,
 	status: "queued" as CallStatus,
 	transcript: null,
+	messages: null,
 	audioUrl: null,
 	durationSeconds: null,
 	overallScore: null,

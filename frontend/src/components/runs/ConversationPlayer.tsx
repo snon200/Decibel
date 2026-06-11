@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
+import type { CorrelatedMessage } from "../../types/runs";
 import {
 	activeTurnIndex,
 	estimateTurnTimings,
@@ -13,9 +14,18 @@ type Props = {
 	url: string;
 	transcript: string;
 	durationSeconds: number | null;
+	messages?: CorrelatedMessage[] | null;
 };
 
-export default function ConversationPlayer({ url, transcript, durationSeconds }: Props) {
+const smsTiming = (m: CorrelatedMessage): string => {
+	if (m.secondsFromCallEnd === null) return "during the test";
+	if (m.secondsFromCallEnd <= 0) return "during the call";
+	const s = m.secondsFromCallEnd;
+	if (s < 60) return `${s}s after the call`;
+	return `${Math.round(s / 60)}m after the call`;
+};
+
+export default function ConversationPlayer({ url, transcript, durationSeconds, messages }: Props) {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bubbleRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -175,6 +185,24 @@ export default function ConversationPlayer({ url, transcript, durationSeconds }:
 				</Stream>
 			) : (
 				<Pending>Transcript will appear here once it’s ready.</Pending>
+			)}
+
+			{messages && messages.length > 0 && (
+				<SmsSection>
+					<SmsHeader>
+						<SmsBadge>SMS</SmsBadge>
+						{messages.length} text{messages.length > 1 ? "s" : ""} from the agent
+					</SmsHeader>
+					{messages.map((m) => (
+						<SmsBubble key={m.id}>
+							<SmsMeta>
+								<SmsIcon aria-hidden>✉</SmsIcon>
+								{m.from} · {smsTiming(m)}
+							</SmsMeta>
+							<SmsBody dir="auto">{m.body}</SmsBody>
+						</SmsBubble>
+					))}
+				</SmsSection>
 			)}
 		</Card>
 	);
@@ -406,4 +434,64 @@ const Pending = styled.p`
 	font-style: italic;
 	margin: 0;
 	padding: 24px 18px;
+`;
+
+const SmsSection = styled.div`
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 16px 18px 20px;
+	border-top: 1px solid var(--border);
+	background: rgba(52, 211, 153, 0.04);
+`;
+
+const SmsHeader = styled.div`
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+`;
+
+const SmsBadge = styled.span`
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--success);
+	background: rgba(52, 211, 153, 0.12);
+	border: 1px solid rgba(52, 211, 153, 0.35);
+	border-radius: 999px;
+	padding: 2px 8px;
+`;
+
+const SmsBubble = styled.div`
+	align-self: flex-start;
+	max-width: 78%;
+	padding: 10px 14px;
+	border-radius: 14px;
+	border-bottom-left-radius: 4px;
+	background: rgba(52, 211, 153, 0.10);
+	border: 1px solid rgba(52, 211, 153, 0.25);
+	animation: fadeInUp 0.3s var(--ease-out);
+`;
+
+const SmsMeta = styled.div`
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.68rem;
+	color: var(--success);
+	margin-bottom: 4px;
+	font-variant-numeric: tabular-nums;
+`;
+
+const SmsIcon = styled.span`
+	font-size: 0.8rem;
+`;
+
+const SmsBody = styled.div`
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: var(--text);
+	word-break: break-word;
 `;

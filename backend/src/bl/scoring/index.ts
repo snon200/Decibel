@@ -1,1 +1,2 @@
-export { judgeRun, overallFromScores } from "./judgeTranscript.ts";
+export { judgeRun } from "./judgeRun.ts";
+export { overallScore } from "./overallScore.ts";

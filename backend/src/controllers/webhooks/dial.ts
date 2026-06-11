@@ -1,44 +1,82 @@
 import express from "express";
 import { logger } from "../../lib/logger.ts";
 import { getProvider } from "../../providers/registry.ts";
-import { ingestCallResult } from "../../bl/runs/index.ts";
+import * as RunsBl from "../../bl/runs/index.ts";
 
 const router = express.Router();
-const dial = getProvider("dial");
 
-// Mounted in src/index.ts WITH `express.raw({ type: '*/*' })` so req.body is the
-// unmodified Buffer needed for HMAC verification.
+// Small LRU-ish dedupe for at-least-once redelivery. Capped at 2000 entries.
+const seenEventIds = new Set<string>();
+const seenEventOrder: string[] = [];
+const SEEN_CAPACITY = 2000;
+const markSeen = (id: string): boolean => {
+	if (seenEventIds.has(id)) return true;
+	seenEventIds.add(id);
+	seenEventOrder.push(id);
+	if (seenEventOrder.length > SEEN_CAPACITY) {
+		const evicted = seenEventOrder.shift();
+		if (evicted) seenEventIds.delete(evicted);
+	}
+	return false;
+};
+
+const headerMap = (raw: express.Request["headers"]): Record<string, string | undefined> => {
+	const out: Record<string, string | undefined> = {};
+	for (const [k, v] of Object.entries(raw)) {
+		if (typeof v === "string") out[k] = v;
+		else if (Array.isArray(v) && v.length > 0) out[k] = v[0];
+	}
+	return out;
+};
+
 router.post("/", (req, res) => {
 	const rawBody = Buffer.isBuffer(req.body)
 		? (req.body as Buffer).toString("utf8")
-		: "";
+		: typeof req.body === "string"
+			? req.body
+			: "";
+	const headers = headerMap(req.headers);
+	const eventId = headers["x-dial-event-id"];
 
-	const headers: Record<string, string | undefined> = {};
-	for (const [key, value] of Object.entries(req.headers)) {
-		headers[key] = Array.isArray(value) ? value[0] : value;
-	}
+	const provider = getProvider("dial");
 
-	if (!dial.verifyWebhook({ rawBody, headers })) {
-		logger.warn("dial webhook: invalid signature");
+	if (!provider.verifyWebhook({ rawBody, headers })) {
+		logger.warn("dial webhook: signature verification failed");
 		res.status(401).end();
 		return;
 	}
 
-	const event = dial.parseWebhookEvent({ rawBody, headers });
+	if (eventId && markSeen(eventId)) {
+		logger.info("dial webhook: dedup hit, skipping", { eventId });
+		res.status(204).end();
+		return;
+	}
 
-	// Ack immediately — Dial retries on non-2xx. Processing is async + idempotent.
-	res.status(202).end();
+	const event = provider.parseWebhookEvent({ rawBody, headers });
+	if (!event) {
+		// Recognized webhook but nothing actionable (e.g. unsupported type).
+		res.status(204).end();
+		return;
+	}
 
-	if (!event) return;
-	ingestCallResult({
-		providerName: "dial",
+	logger.info("dial webhook accepted", {
+		eventId: eventId ?? null,
+		type: event.type,
 		externalCallId: event.externalCallId,
+		status: event.status,
+	});
+
+	void RunsBl.ingestCallResult({
+		externalCallId: event.externalCallId,
+		event,
 	}).catch((err) => {
-		logger.error("dial webhook: ingest failed", {
+		logger.error("ingestCallResult threw from webhook", {
 			externalCallId: event.externalCallId,
 			error: err instanceof Error ? err.message : String(err),
 		});
 	});
+
+	res.status(202).end();
 });
 
 export default router;

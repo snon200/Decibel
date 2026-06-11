@@ -1,60 +1,113 @@
+import OpenAI from "openai";
+import { z } from "zod";
 import { config } from "../config/env.ts";
 import { LlmParseError } from "../lib/errors.ts";
+import { logger } from "../lib/logger.ts";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-
-interface ChatCompletionResponse {
-	choices?: { message?: { content?: string } }[];
-}
-
-/**
- * The single LLM entry point for the app (suite generation + judging). No vendor
- * SDK — a plain fetch to OpenAI keeps it consistent with the provider clients.
- * When `json` is set the model is asked for a JSON object and the parsed value is
- * returned (callers validate the shape with Zod).
- */
-export const complete = async (input: {
+export interface CompleteOptions {
 	system: string;
 	user: string;
-	json?: boolean;
 	temperature?: number;
-}): Promise<unknown> => {
+	maxTokens?: number;
+}
+
+export interface CompleteJsonOptions<T> extends CompleteOptions {
+	schema: z.ZodType<T>;
+	retries?: number;
+}
+
+export interface LlmClient {
+	complete(opts: CompleteOptions): Promise<string>;
+	completeJson<T>(opts: CompleteJsonOptions<T>): Promise<T>;
+}
+
+const requireKey = (): string => {
 	if (!config.OPENAI_API_KEY) {
-		throw new Error("OPENAI_API_KEY is not configured");
+		throw new Error(
+			"OPENAI_API_KEY is not set — required for LLM calls (suite generation, judging)",
+		);
 	}
-
-	const body: Record<string, unknown> = {
-		model: config.OPENAI_MODEL,
-		temperature: input.temperature ?? 0.7,
-		messages: [
-			{ role: "system", content: input.system },
-			{ role: "user", content: input.user },
-		],
-	};
-	if (input.json) body["response_format"] = { type: "json_object" };
-
-	const response = await fetch(OPENAI_URL, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${config.OPENAI_API_KEY}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(body),
-	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`OpenAI request failed: ${response.status} ${text}`);
-	}
-
-	const data = (await response.json()) as ChatCompletionResponse;
-	const content = data.choices?.[0]?.message?.content;
-	if (!content) throw new LlmParseError("empty completion");
-	if (!input.json) return content;
-
-	try {
-		return JSON.parse(content);
-	} catch {
-		throw new LlmParseError(content.slice(0, 300));
-	}
+	return config.OPENAI_API_KEY;
 };
+
+let cachedClient: OpenAI | null = null;
+const getOpenAI = (): OpenAI => {
+	if (!cachedClient) cachedClient = new OpenAI({ apiKey: requireKey() });
+	return cachedClient;
+};
+
+const JSON_DIRECTIVE =
+	"\n\nRespond with a single JSON object that matches the requested schema. " +
+	"Do not include prose, explanations, or markdown fences.";
+
+const RETRY_DIRECTIVE =
+	"\n\nYour previous response did not parse as JSON. Output ONLY a JSON object that matches the schema.";
+
+export const createOpenAiClient = (): LlmClient => {
+	const complete = async (opts: CompleteOptions): Promise<string> => {
+		const client = getOpenAI();
+		const response = await client.chat.completions.create({
+			model: config.OPENAI_MODEL,
+			temperature: opts.temperature ?? 0.3,
+			max_tokens: opts.maxTokens ?? 2048,
+			messages: [
+				{ role: "system", content: opts.system },
+				{ role: "user", content: opts.user },
+			],
+		});
+		const content = response.choices[0]?.message?.content;
+		if (!content) throw new Error("OpenAI returned empty content");
+		return content;
+	};
+
+	const completeJsonOnce = async (opts: CompleteOptions): Promise<string> => {
+		const client = getOpenAI();
+		const response = await client.chat.completions.create({
+			model: config.OPENAI_MODEL,
+			temperature: opts.temperature ?? 0.3,
+			max_tokens: opts.maxTokens ?? 2048,
+			response_format: { type: "json_object" },
+			messages: [
+				{ role: "system", content: opts.system },
+				{ role: "user", content: opts.user },
+			],
+		});
+		const content = response.choices[0]?.message?.content;
+		if (!content) throw new Error("OpenAI returned empty content");
+		return content;
+	};
+
+	const completeJson = async <T>(opts: CompleteJsonOptions<T>): Promise<T> => {
+		const retries = opts.retries ?? 1;
+		let lastError: unknown = null;
+		let systemPrompt = opts.system + JSON_DIRECTIVE;
+
+		for (let attempt = 0; attempt <= retries; attempt++) {
+			let raw = "";
+			try {
+				raw = await completeJsonOnce({
+					...opts,
+					system: systemPrompt,
+				});
+				const parsed = JSON.parse(raw);
+				return opts.schema.parse(parsed);
+			} catch (err) {
+				lastError = err;
+				logger.warn("llm completeJson failed attempt", {
+					attempt,
+					error: err instanceof Error ? err.message : String(err),
+					rawPrefix: raw.slice(0, 200),
+				});
+				systemPrompt = opts.system + JSON_DIRECTIVE + RETRY_DIRECTIVE;
+			}
+		}
+
+		throw new LlmParseError(
+			lastError instanceof Error ? lastError.message : String(lastError),
+		);
+	};
+
+	return { complete, completeJson };
+};
+
+export const llm: LlmClient = createOpenAiClient();

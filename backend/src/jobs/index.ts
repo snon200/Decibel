@@ -1,30 +1,31 @@
 import { reconcileRuns } from "./reconcileRuns.ts";
+import { retryFailedJudges } from "./retryFailedJudges.ts";
 import { logger } from "../lib/logger.ts";
 
-let timer: ReturnType<typeof setInterval> | null = null;
+const RECONCILE_INTERVAL_MS = 20_000;
+const RETRY_JUDGE_INTERVAL_MS = 60_000;
 
-const DEFAULT_INTERVAL_MS = 20_000;
-
-export const startJobs = (input?: { intervalMs?: number }): void => {
-	if (timer) return;
-	const intervalMs = input?.intervalMs ?? DEFAULT_INTERVAL_MS;
-
-	timer = setInterval(() => {
-		void reconcileRuns().catch((err) => {
-			logger.error("reconcileRuns crashed", {
-				error: err instanceof Error ? err.message : String(err),
-			});
+const runSafely = async (name: string, fn: () => Promise<void>): Promise<void> => {
+	try {
+		await fn();
+	} catch (err) {
+		logger.error(`job ${name} threw`, {
+			error: err instanceof Error ? err.message : String(err),
 		});
-	}, intervalMs);
-	// Don't keep the process alive solely for this timer.
-	timer.unref?.();
-
-	logger.info("jobs started", { intervalMs });
+	}
 };
 
-export const stopJobs = (): void => {
-	if (timer) {
-		clearInterval(timer);
-		timer = null;
-	}
+export const startJobs = (): void => {
+	setInterval(() => {
+		void runSafely("reconcileRuns", reconcileRuns);
+	}, RECONCILE_INTERVAL_MS);
+
+	setInterval(() => {
+		void runSafely("retryFailedJudges", retryFailedJudges);
+	}, RETRY_JUDGE_INTERVAL_MS);
+
+	logger.info("background jobs started", {
+		reconcileMs: RECONCILE_INTERVAL_MS,
+		retryJudgeMs: RETRY_JUDGE_INTERVAL_MS,
+	});
 };

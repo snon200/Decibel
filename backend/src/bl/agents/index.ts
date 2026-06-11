@@ -20,8 +20,6 @@ export const createAgent = async (input: {
 	description: string;
 }): Promise<{ agent: Agent; tests: Test[]; suiteError?: string }> => {
 	const agent = await AgentsDal.createAgent(input);
-	// Auto-generate the suite. A generation failure must not lose the agent row,
-	// so surface it as `suiteError` and let the user regenerate later.
 	try {
 		const tests = await SuiteBl.generateFromDescription({
 			agentId: agent.id,
@@ -30,13 +28,12 @@ export const createAgent = async (input: {
 		});
 		return { agent, tests };
 	} catch (err) {
-		const suiteError =
-			err instanceof Error ? err.message : "suite generation failed";
-		logger.error("createAgent: suite generation failed", {
+		const message = err instanceof Error ? err.message : String(err);
+		logger.error("suite generation failed during createAgent", {
 			agentId: agent.id,
-			error: suiteError,
+			error: message,
 		});
-		return { agent, tests: [], suiteError };
+		return { agent, tests: [], suiteError: message };
 	}
 };
 
@@ -47,7 +44,7 @@ export const getAgent = async (input: { id: string }): Promise<AgentDetail> => {
 	const allRuns = await RunsDal.listRunsForAgent({ agentId: agent.id });
 	const latestRunsByTest: Record<string, Run | null> = {};
 	for (const test of tests) latestRunsByTest[test.id] = null;
-	// allRuns is ordered by createdAt asc; iterate to keep the most recent per test.
+	// allRuns is asc by createdAt; iteration keeps the most recent per test.
 	for (const run of allRuns) {
 		latestRunsByTest[run.testId] = run;
 	}

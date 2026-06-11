@@ -4,6 +4,7 @@ import { logger } from "../../lib/logger.ts";
 import { getProvider } from "../../providers/registry.ts";
 import { rehydrate, toUpdate, isTerminalString } from "./runAdapter.ts";
 import { judgeAndPersist } from "./judgeAndPersist.ts";
+import { correlateSms } from "./correlateSms.ts";
 import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
 
 const buildPlaceCallStub = (): PlaceCallInput => ({
@@ -95,6 +96,27 @@ export const ingestCallResult = async (input: {
 		persisted.transcript &&
 		persisted.overallScore === null
 	) {
+		// Capture SMS the agent sent around the call before judging, so the judge
+		// can score SMS-related criteria. Window = [call start, now] (transcript
+		// just landed). Best-effort: a failure here must not block judging.
+		if (persisted.provider === "dial") {
+			try {
+				const messages = await correlateSms({ run: persisted });
+				await RunsDal.setRunMessages({ id: persisted.id, messages });
+				if (messages.length > 0) {
+					logger.info("ingest: correlated SMS", {
+						runId: persisted.id,
+						count: messages.length,
+					});
+				}
+			} catch (err) {
+				logger.warn("ingest: correlateSms failed", {
+					runId: persisted.id,
+					error: err instanceof Error ? err.message : String(err),
+				});
+			}
+		}
+
 		// fire-and-forget; judge errors land in the retry job
 		const test = await TestsDal.getTest({ id: persisted.testId });
 		if (!test) {

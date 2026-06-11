@@ -48,6 +48,7 @@ export default function RunDetailPage() {
 						url={audioUrl}
 						transcript={run.transcript ?? ""}
 						durationSeconds={run.durationSeconds}
+						messages={run.messages}
 					/>
 				</Section>
 			) : (

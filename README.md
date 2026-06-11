@@ -1,4 +1,4 @@
-# Dial
+# Decibel
 
 Management system for AI voice agents, built for the Dial Hackathon.
 

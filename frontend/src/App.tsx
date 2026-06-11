@@ -5,7 +5,7 @@ import AgentDetailPage from "./pages/AgentDetailPage";
 import RunDetailPage from "./pages/RunDetailPage";
 
 export default function App() {
-	document.title = "Agent Arena";
+	document.title = "Decibel";
 
 	return (
 		<BrowserRouter>
@@ -23,7 +23,7 @@ const Shell = () => {
 			{!onLanding && (
 				<TopNav>
 					<NavBrand to="/agents">
-						<Dot /> Agent Arena
+						<Dot /> Decibel
 					</NavBrand>
 				</TopNav>
 			)}

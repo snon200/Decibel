@@ -1,29 +1,37 @@
 import * as TestsDal from "../../dal/tests.ts";
 import * as AgentsDal from "../../dal/agents.ts";
-import {
-	BadRequestError,
-	NotFoundError,
-	NotImplementedError,
-} from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { draftToTests, generateSuiteDraft } from "./generateSuite.ts";
 import type { Criterion, Test } from "../../database/schemas/tests.ts";
 
-export const generateFromDescription = async (_input: {
+// Generate a suite from the agent description and persist it (additive).
+export const generateFromDescription = async (input: {
 	agentId: string;
 	name: string;
 	description: string;
 }): Promise<Test[]> => {
-	throw new NotImplementedError("suite.generateFromDescription (LLM call pending)");
+	const draft = await generateSuiteDraft({
+		name: input.name,
+		description: input.description,
+	});
+	return TestsDal.bulkCreateTests({
+		tests: draftToTests({ agentId: input.agentId, draft }),
+	});
 };
 
+// Replace the agent's existing suite with a freshly generated one.
 export const regenerateSuite = async (input: {
 	agentId: string;
 }): Promise<Test[]> => {
 	const agent = await AgentsDal.getAgent({ id: input.agentId });
 	if (!agent) throw new NotFoundError("Agent");
-	return generateFromDescription({
-		agentId: agent.id,
+	const draft = await generateSuiteDraft({
 		name: agent.name,
 		description: agent.description,
+	});
+	return TestsDal.replaceSuiteForAgent({
+		agentId: agent.id,
+		tests: draftToTests({ agentId: agent.id, draft }),
 	});
 };
 

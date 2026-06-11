@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import styled from "styled-components";
 import AgentsPage from "./pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
@@ -9,52 +9,86 @@ export default function App() {
 
 	return (
 		<BrowserRouter>
-			<AppShell>
-				<TopNav>
-					<NavTitle to="/agents">Agent Arena</NavTitle>
-				</TopNav>
-				<Container>
-					<Routes>
-						<Route path="/" element={<Navigate to="/agents" replace />} />
-						<Route path="/agents" element={<AgentsPage />} />
-						<Route path="/agents/:agentId" element={<AgentDetailPage />} />
-						<Route path="/runs/:runId" element={<RunDetailPage />} />
-						<Route path="*" element={<NotFound />} />
-					</Routes>
-				</Container>
-			</AppShell>
+			<Shell />
 		</BrowserRouter>
 	);
 }
 
-const NotFound = () => <p>Not found.</p>;
+const Shell = () => {
+	const { pathname } = useLocation();
+	const onLanding = pathname === "/" || pathname === "/agents";
+
+	return (
+		<AppShell>
+			{!onLanding && (
+				<TopNav>
+					<NavBrand to="/agents">
+						<Dot /> Agent Arena
+					</NavBrand>
+				</TopNav>
+			)}
+			<Routes>
+				<Route path="/" element={<Navigate to="/agents" replace />} />
+				<Route path="/agents" element={<AgentsPage />} />
+				<Route path="/agents/:agentId" element={<AgentDetailPage />} />
+				<Route path="/runs/:runId" element={<RunDetailPage />} />
+				<Route path="*" element={<NotFound />} />
+			</Routes>
+		</AppShell>
+	);
+};
+
+const NotFound = () => (
+	<Centered>
+		<h1>404</h1>
+		<p>Couldn't find that page.</p>
+	</Centered>
+);
 
 const AppShell = styled.div`
-	max-width: 1200px;
-	margin: 0 auto;
-	padding: 24px;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
 `;
 
 const TopNav = styled.nav`
 	display: flex;
 	align-items: center;
-	padding-bottom: 16px;
-	border-bottom: 1px solid #e2e6ee;
-	margin-bottom: 24px;
+	padding: 16px 32px;
+	border-bottom: 1px solid var(--border);
+	background: rgba(8, 8, 12, 0.75);
+	backdrop-filter: blur(12px);
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	animation: fadeIn 0.4s var(--ease-out);
 `;
 
-const NavTitle = styled(Link)`
-	font-size: 1.4rem;
+const NavBrand = styled(Link)`
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 0.95rem;
 	font-weight: 600;
-	color: #1f2937;
+	letter-spacing: -0.02em;
+	color: var(--text);
 	text-decoration: none;
+	transition: color 0.15s var(--ease-out);
 	&:hover {
-		color: #2563eb;
+		color: var(--accent-bright);
 	}
 `;
 
-const Container = styled.main`
-	display: flex;
-	flex-direction: column;
-	gap: 32px;
+const Dot = styled.span`
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--accent-bright);
+	box-shadow: 0 0 12px var(--accent-glow);
+`;
+
+const Centered = styled.div`
+	margin: auto;
+	text-align: center;
+	color: var(--text-muted);
 `;

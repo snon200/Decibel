@@ -1,0 +1,19 @@
+# dal/
+
+Data Access Layer — thin query helpers over the Drizzle tables. **No business logic, no
+vendor calls.** Just typed CRUD that the `bl/` layer composes.
+
+## Files (one per table)
+
+- `agents.ts` — `createAgent`, `getAgent`, `listAgents`, `updateAgent`.
+- `tests.ts` — `createTest`, `getTest`, `listTestsForAgent`, `setTesterInstruction`.
+- `runs.ts` — `createRun`, `getRun`, `getRunByExternalCallId`, `updateRunStatus`,
+  `setRunResult`, `listStaleRuns` (for the reconciler).
+- `scores.ts` — `insertScores`, `getScoresForRun`.
+- `benchmarks.ts` — `createBenchmark`, `getBenchmarkWithRuns`.
+
+## Rules
+
+- Every function takes a single object param (`{ ... }`), never positional args.
+- Return plain typed rows; let `bl/` decide what to do with them.
+- `getRunByExternalCallId` is what webhook handlers use to map a vendor event back to a run.

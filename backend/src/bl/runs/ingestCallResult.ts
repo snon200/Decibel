@@ -33,8 +33,17 @@ export const ingestCallResult = async (input: {
 	}
 
 	// Idempotent short-circuit: nothing more to do if already fully resolved.
+	// "Resolved" also means the recording is captured for Dial runs (which always
+	// have one for a completed call); competitor providers expose no recording.
 	const alreadyTerminal = isTerminalString(runRow.status);
-	if (alreadyTerminal && runRow.transcript && runRow.overallScore !== null) {
+	const recordingResolved =
+		runRow.provider !== "dial" || Boolean(runRow.audioUrl);
+	if (
+		alreadyTerminal &&
+		runRow.transcript &&
+		runRow.overallScore !== null &&
+		recordingResolved
+	) {
 		return;
 	}
 

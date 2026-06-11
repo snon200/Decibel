@@ -15,6 +15,9 @@ export const dialRequest = async <T>(input: {
 
 	const headers: Record<string, string> = {
 		Authorization: `Bearer ${config.DIAL_API_KEY}`,
+		// Required: the /recording route does content negotiation and returns an
+		// empty body without an explicit JSON Accept header.
+		Accept: "application/json",
 	};
 	if (body !== undefined) headers["Content-Type"] = "application/json";
 	if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;

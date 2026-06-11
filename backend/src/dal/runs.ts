@@ -94,10 +94,15 @@ export const setOverallScore = async (input: {
 
 /**
  * Runs the reconcile poller should refresh from the provider. Includes:
- *  - any non-terminal run (queued/ringing/in_progress), and
- *  - `completed` runs whose transcript hasn't landed yet — providers finalize
- *    the call status a few seconds before the transcript is ready, so we must
- *    keep polling these until the transcript arrives (then judging fires).
+ *  - any non-terminal run (queued/ringing/in_progress),
+ *  - `completed` runs whose transcript hasn't landed yet, and
+ *  - `completed` Dial runs still missing their recording URL.
+ *
+ * Providers finalize the call status a few seconds before the transcript and
+ * recording are ready, so we keep polling these until both arrive (transcript
+ * then triggers judging; the recording backfills `audio_url`). Dial always has
+ * a recording for a completed call; competitor providers don't expose one, so
+ * the recording clause is scoped to Dial to avoid pointless churn.
  *
  * Bounded by `maxAgeSeconds` so we never poll genuinely stuck rows forever.
  */
@@ -119,7 +124,11 @@ export const listRunsToPoll = async (input: {
 					notInArray(runs.status, terminal),
 					and(
 						eq(runs.status, "completed"),
-						or(isNull(runs.transcript), eq(runs.transcript, "")),
+						or(
+							isNull(runs.transcript),
+							eq(runs.transcript, ""),
+							and(eq(runs.provider, "dial"), isNull(runs.audioUrl)),
+						),
 					),
 				),
 			),

@@ -24,5 +24,23 @@ export const apiPost = async <T>(path: string, body?: unknown): Promise<T> => {
 		body: body === undefined ? undefined : JSON.stringify(body),
 	});
 	await throwIfNotOk(response);
-	return (await response.json()) as T;
+	// Some endpoints return 204; guard against empty body.
+	const text = await response.text();
+	return (text ? JSON.parse(text) : undefined) as T;
+};
+
+export const apiPatch = async <T>(path: string, body: unknown): Promise<T> => {
+	const response = await fetch(`${apiBaseUrl}${path}`, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	await throwIfNotOk(response);
+	const text = await response.text();
+	return (text ? JSON.parse(text) : undefined) as T;
+};
+
+export const apiDelete = async (path: string): Promise<void> => {
+	const response = await fetch(`${apiBaseUrl}${path}`, { method: "DELETE" });
+	await throwIfNotOk(response);
 };

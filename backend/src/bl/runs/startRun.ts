@@ -1,67 +1,103 @@
 import * as RunsDal from "../../dal/runs.ts";
 import * as TestsDal from "../../dal/tests.ts";
-import { getProvider } from "../../providers/registry.ts";
-import { runWithConcurrency } from "../../lib/concurrency.ts";
+import * as AgentsDal from "../../dal/agents.ts";
+import * as CompetitorsDal from "../../dal/competitors.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { logger } from "../../lib/logger.ts";
-import { resolveTarget, type RunTarget } from "./target.ts";
-import type { Run } from "../../database/schemas/runs.ts";
+import { config } from "../../config/env.ts";
+import { getProvider } from "../../providers/registry.ts";
+import { Run } from "./Run.ts";
+import type { Run as RunRow, TargetKind } from "../../database/schemas/runs.ts";
+import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
 
-// Every run is a Dial outbound call — to the user's bot or to a competitor's
-// number. The tester platform is always Dial.
-const TESTER_PROVIDER = "dial" as const;
+export type RunTarget =
+	| { kind: "user_bot" }
+	| { kind: "competitor"; competitorId: string };
 
-const MAX_PARALLEL_RUNS = 3;
+export const resolveTarget = async (input: {
+	agentId: string;
+	target: RunTarget;
+}): Promise<{ kind: TargetKind; label: string; phoneNumber: string }> => {
+	if (input.target.kind === "user_bot") {
+		const agent = await AgentsDal.getAgent({ id: input.agentId });
+		if (!agent) throw new NotFoundError("Agent");
+		return {
+			kind: "user_bot",
+			label: "User bot",
+			phoneNumber: agent.phoneNumber,
+		};
+	}
+	const competitor = await CompetitorsDal.getCompetitor({
+		id: input.target.competitorId,
+	});
+	if (!competitor) throw new NotFoundError("Competitor");
+	return {
+		kind: "competitor",
+		label: competitor.platform,
+		phoneNumber: competitor.phoneNumber,
+	};
+};
 
 export const startRun = async (input: {
 	testId: string;
 	target: RunTarget;
-}): Promise<Run> => {
+}): Promise<RunRow> => {
 	const test = await TestsDal.getTest({ id: input.testId });
 	if (!test) throw new NotFoundError("Test");
-
 	const resolved = await resolveTarget({
 		agentId: test.agentId,
 		target: input.target,
 	});
 
-	const run = await RunsDal.createRun({
+	const providerName: ProviderName = "dial";
+	const runRow = await RunsDal.createRun({
 		testId: test.id,
 		targetKind: resolved.kind,
 		targetLabel: resolved.label,
 		targetPhoneNumber: resolved.phoneNumber,
-		provider: TESTER_PROVIDER,
+		provider: providerName,
 		status: "queued",
 	});
 
+	const provider = getProvider(providerName);
+	const placeCallInput: PlaceCallInput = {
+		to: resolved.phoneNumber,
+		systemPrompt: test.testerInstruction,
+		idempotencyKey: runRow.id,
+		...(config.PUBLIC_BASE_URL
+			? { webhookUrl: `${config.PUBLIC_BASE_URL}/webhooks/dial` }
+			: {}),
+	};
+
 	try {
-		const placed = await getProvider(TESTER_PROVIDER).placeCall({
-			to: resolved.phoneNumber,
-			systemPrompt: test.testerInstruction,
+		const run = new Run({ provider, input: placeCallInput });
+		await run.start();
+		if (!run.externalCallId) {
+			throw new Error("provider.placeCall returned no externalCallId");
+		}
+		const updated = await RunsDal.setRunCallId({
+			id: runRow.id,
+			externalCallId: run.externalCallId,
+			status: run.status,
 		});
-		return await RunsDal.setRunCallId({
-			id: run.id,
-			externalCallId: placed.externalCallId,
-			status: placed.status,
+		logger.info("run started", {
+			runId: runRow.id,
+			externalCallId: run.externalCallId,
+			testId: test.id,
+			targetKind: resolved.kind,
 		});
+		return updated;
 	} catch (err) {
-		const message = err instanceof Error ? err.message : "failed to place call";
-		logger.error("startRun: placeCall failed", { runId: run.id, error: message });
-		return RunsDal.applyRunUpdate({
-			id: run.id,
-			update: { status: "failed", error: message, completedAt: new Date() },
+		const message = err instanceof Error ? err.message : String(err);
+		logger.error("run failed at placeCall", { runId: runRow.id, error: message });
+		const failed = await RunsDal.applyRunUpdate({
+			id: runRow.id,
+			update: {
+				status: "failed",
+				error: message,
+				completedAt: new Date(),
+			},
 		});
+		return failed;
 	}
-};
-
-export const runSuite = async (input: {
-	agentId: string;
-	target: RunTarget;
-}): Promise<Run[]> => {
-	const tests = await TestsDal.listTestsForAgent({ agentId: input.agentId });
-	if (tests.length === 0) throw new NotFoundError("Tests for agent");
-
-	return runWithConcurrency(tests, MAX_PARALLEL_RUNS, (test) =>
-		startRun({ testId: test.id, target: input.target }),
-	);
 };

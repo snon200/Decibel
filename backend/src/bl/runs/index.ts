@@ -6,9 +6,11 @@ import type { Run } from "../../database/schemas/runs.ts";
 import type { Test } from "../../database/schemas/tests.ts";
 import type { Score } from "../../database/schemas/scores.ts";
 
-export { startRun, runSuite } from "./startRun.ts";
+export { startRun, resolveTarget } from "./startRun.ts";
+export type { RunTarget } from "./startRun.ts";
+export { runSuite } from "./runSuite.ts";
 export { ingestCallResult } from "./ingestCallResult.ts";
-export { resolveTarget, type RunTarget } from "./target.ts";
+export { judgeAndPersist } from "./judgeAndPersist.ts";
 
 export type RunDetail = {
 	run: Run;

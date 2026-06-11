@@ -1,70 +1,110 @@
 import * as RunsDal from "../../dal/runs.ts";
 import * as TestsDal from "../../dal/tests.ts";
-import * as ScoresDal from "../../dal/scores.ts";
-import { getProvider } from "../../providers/registry.ts";
-import { judgeRun } from "../scoring/index.ts";
 import { logger } from "../../lib/logger.ts";
-import { TERMINAL_STATUSES } from "../../providers/types.ts";
-import type { CallStatus, ProviderName } from "../../providers/types.ts";
+import { getProvider } from "../../providers/registry.ts";
+import { rehydrate, toUpdate, isTerminalString } from "./runAdapter.ts";
+import { judgeAndPersist } from "./judgeAndPersist.ts";
+import type {
+	NormalizedCall,
+	NormalizedCallEvent,
+	PlaceCallInput,
+	ProviderName,
+} from "../../providers/types.ts";
 
-/**
- * The single funnel for call results — used by BOTH the Dial webhook and the
- * reconcile poller. Keyed on `externalCallId` and authoritative: it re-reads the
- * call from the provider so it converges to the same state regardless of which
- * path (webhook vs poll) arrives first. Idempotent — safe to call repeatedly.
- */
+const buildPlaceCallStub = (): PlaceCallInput => ({
+	// Rehydrate doesn't reach back through the provider for placeCall, but the
+	// Run constructor demands a non-null input. Stub is fine — we never call
+	// run.start() during ingest.
+	to: "",
+	systemPrompt: "",
+});
+
 export const ingestCallResult = async (input: {
-	providerName: ProviderName;
 	externalCallId: string;
+	event?: NormalizedCallEvent;
+	snapshot?: NormalizedCall;
 }): Promise<void> => {
-	const run = await RunsDal.getRunByExternalCallId({
+	const runRow = await RunsDal.getRunByExternalCallId({
 		externalCallId: input.externalCallId,
 	});
-	if (!run) {
-		logger.info("ingest: no run for external call id", {
+	if (!runRow) {
+		logger.warn("ingestCallResult: orphan event", {
 			externalCallId: input.externalCallId,
 		});
 		return;
 	}
 
-	// Already finished and scored — nothing left to do.
-	const alreadyTerminal = TERMINAL_STATUSES.has(run.status as CallStatus);
-	if (alreadyTerminal && run.overallScore !== null) return;
+	// Idempotent short-circuit: nothing more to do if already fully resolved.
+	const alreadyTerminal = isTerminalString(runRow.status);
+	if (alreadyTerminal && runRow.transcript && runRow.overallScore !== null) {
+		return;
+	}
 
-	const provider = getProvider(input.providerName);
-	const call = await provider.getCall({ externalCallId: input.externalCallId });
+	const provider = getProvider(runRow.provider as ProviderName);
+	const run = rehydrate({ runRow, provider, input: buildPlaceCallStub() });
 
-	const terminal = TERMINAL_STATUSES.has(call.status);
-	const update: RunsDal.RunUpdate = { status: call.status };
-	if (call.transcript !== null) update.transcript = call.transcript;
-	if (call.durationSeconds !== null) update.durationSeconds = call.durationSeconds;
-	if (terminal && !run.completedAt) update.completedAt = new Date();
+	if (input.event) run.applyEvent(input.event);
 
-	if (call.recordingAvailable) {
+	// Always refresh from the provider for the canonical snapshot (status,
+	// duration, transcript). Webhooks are thin; refresh gives us everything.
+	try {
+		await run.refresh();
+	} catch (err) {
+		logger.warn("ingestCallResult: provider.getCall failed; persisting partial", {
+			runId: runRow.id,
+			externalCallId: input.externalCallId,
+			error: err instanceof Error ? err.message : String(err),
+		});
+	}
+
+	let audioUrl: string | null = runRow.audioUrl;
+	if (run.isTerminal && run.recordingAvailable && !audioUrl) {
 		try {
-			const url = await provider.getRecordingUrl({
-				externalCallId: input.externalCallId,
-			});
-			if (url) update.audioUrl = url;
+			audioUrl = await run.getRecordingUrl();
 		} catch (err) {
-			logger.warn("ingest: recording fetch failed", {
-				runId: run.id,
+			logger.warn("ingestCallResult: getRecordingUrl failed", {
+				runId: runRow.id,
 				error: err instanceof Error ? err.message : String(err),
 			});
 		}
 	}
 
-	await RunsDal.applyRunUpdate({ id: run.id, update });
+	const update = toUpdate(run, { audioUrl });
+	if (run.isTerminal && !runRow.completedAt) {
+		update.completedAt = new Date();
+	}
+	const persisted = await RunsDal.applyRunUpdate({
+		id: runRow.id,
+		update,
+	});
 
-	// Judge once: only when the call completed with a transcript and we haven't
-	// scored it yet (dedupe across webhook + poll).
-	if (call.status === "completed" && call.transcript) {
-		const existing = await ScoresDal.getScoresForRun({ runId: run.id });
-		if (existing.length === 0) {
-			const test = await TestsDal.getTest({ id: run.testId });
-			if (test) {
-				await judgeRun({ runId: run.id, test, transcript: call.transcript });
-			}
+	logger.info("ingest applied", {
+		runId: runRow.id,
+		externalCallId: input.externalCallId,
+		status: persisted.status,
+		terminal: run.isTerminal,
+		hasTranscript: Boolean(persisted.transcript),
+	});
+
+	if (
+		run.isTerminal &&
+		persisted.transcript &&
+		persisted.overallScore === null
+	) {
+		// fire-and-forget; judge errors land in the retry job
+		const test = await TestsDal.getTest({ id: persisted.testId });
+		if (!test) {
+			logger.warn("ingest: cannot judge — test row missing", {
+				runId: persisted.id,
+				testId: persisted.testId,
+			});
+			return;
 		}
+		void judgeAndPersist({ runId: persisted.id }).catch((err) => {
+			logger.error("judgeAndPersist threw", {
+				runId: persisted.id,
+				error: err instanceof Error ? err.message : String(err),
+			});
+		});
 	}
 };

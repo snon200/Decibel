@@ -32,9 +32,8 @@ const startServer = async () => {
 	try {
 		app.listen(port, () => {
 			console.log(`Server running at http://localhost:${port}`);
+			startJobs();
 		});
-		// Reconcile poller: the reliability backstop for missed Dial webhooks.
-		startJobs();
 	} catch (err) {
 		console.error("Error starting server:", err);
 		process.exit(1);

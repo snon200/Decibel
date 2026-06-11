@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, lt, notInArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "../database/data-source.ts";
 import { runs, type NewRun, type Run, type TargetKind } from "../database/schemas/runs.ts";
 import { tests } from "../database/schemas/tests.ts";
@@ -92,8 +92,17 @@ export const setOverallScore = async (input: {
 	return row;
 };
 
-export const listStaleRuns = async (input: {
-	olderThanSeconds: number;
+/**
+ * Runs the reconcile poller should refresh from the provider. Includes:
+ *  - any non-terminal run (queued/ringing/in_progress), and
+ *  - `completed` runs whose transcript hasn't landed yet — providers finalize
+ *    the call status a few seconds before the transcript is ready, so we must
+ *    keep polling these until the transcript arrives (then judging fires).
+ *
+ * Bounded by `maxAgeSeconds` so we never poll genuinely stuck rows forever.
+ */
+export const listRunsToPoll = async (input: {
+	maxAgeSeconds: number;
 }): Promise<Run[]> => {
 	const terminal = Array.from(TERMINAL_STATUSES);
 	return db
@@ -101,9 +110,18 @@ export const listStaleRuns = async (input: {
 		.from(runs)
 		.where(
 			and(
-				notInArray(runs.status, terminal),
 				isNotNull(runs.externalCallId),
-				lt(runs.createdAt, sql`now() - make_interval(secs => ${input.olderThanSeconds})`),
+				gt(
+					runs.createdAt,
+					sql`now() - make_interval(secs => ${input.maxAgeSeconds})`,
+				),
+				or(
+					notInArray(runs.status, terminal),
+					and(
+						eq(runs.status, "completed"),
+						or(isNull(runs.transcript), eq(runs.transcript, "")),
+					),
+				),
 			),
 		);
 };

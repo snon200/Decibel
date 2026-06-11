@@ -1,19 +1,19 @@
 # jobs/
 
-Background workers. **No WebSockets** — just `setInterval`/cron-style polling. These make
-result capture reliable when a webhook is missed or delayed.
+Background workers. **No WebSockets, no webhooks** — just `setInterval` polling. This is the
+sole mechanism that drives a call to a terminal, judged state.
 
 ## Files
 
-- `reconcileRuns.ts` — periodically (e.g. every 15–30s) load runs stuck in
-  `dialing`/`in_progress` past a small grace period, call
-  `providers/<platform>.getCall(external_call_id)`, and feed the result into
-  `bl/runs/ingestCallResult`. Idempotent, so it's harmless if the webhook already handled
-  the run.
+- `reconcileRuns.ts` — every few seconds, load every non-terminal run that already has an
+  `external_call_id` and feed it into `bl/runs/ingestCallResult`, which re-reads the call via
+  `providers/<platform>.getCall`. Idempotent, so repeated polls are harmless.
+- `retryFailedJudges.ts` — re-attempt judging for terminal runs that have a transcript but no
+  score yet (e.g. a transient LLM error).
 - `index.ts` — start/stop the schedulers; wired up from `src/index.ts`.
 
 ## Why this exists
 
-Webhooks are fast but need a reachable public URL and can be missed (server restart, tunnel
-blip). Polling is the safety net that guarantees every run eventually reaches a terminal
-state. Together: webhook for latency, poller for reliability — and never a socket.
+With no webhooks, polling is not a safety net — it is the primary path. A tight reconcile
+cadence guarantees every run reaches a terminal state and gets judged, without ever opening a
+socket or exposing a public callback URL.

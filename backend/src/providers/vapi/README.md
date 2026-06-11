@@ -18,10 +18,11 @@ Auth: `Authorization: Bearer <VAPI_API_KEY>`. Base URL: `https://api.vapi.ai`.
 - **`deleteAgent(externalAgentId)`** — `DELETE /assistant/{id}` (and detach the number)
   to clean up.
 
-## Why no `placeCall` / webhook here
+## Why no `placeCall` here
 
 We don't dial *through* VAPI. The user-bot suite and the competitor suite both go out
-through Dial; VAPI is just where the competitor lives. Keeps the lifecycle uniform.
+through Dial; VAPI is just where the competitor lives. Keeps the lifecycle uniform. There is
+no webhook either — call results are read by polling Dial's `getCall`.
 
 ## Notes
 

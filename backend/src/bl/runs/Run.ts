@@ -2,7 +2,6 @@ import { TERMINAL_STATUSES } from "../../providers/types.ts";
 import type {
 	CallStatus,
 	NormalizedCall,
-	NormalizedCallEvent,
 	PlaceCallInput,
 	VoiceProvider,
 } from "../../providers/types.ts";
@@ -22,8 +21,7 @@ const delay = (ms: number): Promise<void> =>
 /**
  * A single test call executed through any {@link VoiceProvider}. Generic over
  * the provider — Dial, VAPI, or any future adapter plug in unchanged. Holds the
- * normalized call state and converges via webhook events ({@link applyEvent}) or
- * polling ({@link refresh}).
+ * normalized call state and converges by polling the provider ({@link refresh}).
  */
 export class Run {
 	readonly provider: VoiceProvider;
@@ -57,19 +55,6 @@ export class Run {
 			externalCallId: this.requireCallId(),
 		});
 		this.apply(call);
-		return this;
-	}
-
-	/** Webhook path: fold a normalized event into the run state (idempotent). */
-	applyEvent(event: NormalizedCallEvent): this {
-		if (this.externalCallId && event.externalCallId !== this.externalCallId) {
-			return this;
-		}
-		this.externalCallId ??= event.externalCallId;
-		if (event.status) this.status = event.status;
-		if (event.durationSeconds !== null) {
-			this.durationSeconds = event.durationSeconds;
-		}
 		return this;
 	}
 

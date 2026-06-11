@@ -12,17 +12,18 @@ no-WebSocket lifecycle.
   call now runs on its own. The target is either the user's bot
   (`target_kind = 'user_bot'`) or a provisioned competitor
   (`target_kind = 'competitor'`); this code-path is identical for both.
-- `ingestCallResult.ts` — the single funnel for results, called by **both** the webhook
-  handler and the reconciliation poller. Given a `NormalizedCall`/`NormalizedCallEvent`:
-  1. find the run by `external_call_id` (idempotent — ignore duplicates),
-  2. update status + duration,
-  3. if a transcript is present, store it and trigger `bl/scoring/judge`,
-  4. store `audio_url` (for the dashboard player) if the vendor exposes one,
-  5. set status `completed` (or `failed`).
+- `ingestCallResult.ts` — the single funnel for results, called by the reconciliation
+  poller. Given an `external_call_id`:
+  1. find the run by `external_call_id` (idempotent — short-circuits once resolved),
+  2. re-read the canonical `NormalizedCall` from the provider (`getCall`),
+  3. update status + duration,
+  4. if a transcript is present, store it and trigger `bl/scoring/judge`,
+  5. store `audio_url` (for the dashboard player) if the vendor exposes one,
+  6. set status `completed` (or `failed`).
 - `getRunResult.ts` — assemble run + transcript + scores for the API/dashboard.
 
 ## Why one ingest funnel
 
-Webhooks and polling can both report the same call. Routing both through
-`ingestCallResult` (idempotent on `external_call_id` + event id) means we never double-judge
-and the run converges to the same final state no matter which path wins.
+There are no webhooks — the poller is the only caller. Keeping a single idempotent funnel
+(short-circuit on terminal + transcript + score) means repeated polls never double-judge and
+every run converges to the same final state.

@@ -28,8 +28,6 @@ export interface PlaceCallInput {
 	/** BCP-47 language tag; omit to let the provider auto-detect. */
 	language?: string;
 	idempotencyKey?: string;
-	/** Where the provider should POST call results, when it supports per-call URLs. */
-	webhookUrl?: string;
 }
 
 export interface NormalizedCall {
@@ -39,22 +37,6 @@ export interface NormalizedCall {
 	transcript: string | null;
 	recordingAvailable: boolean;
 	raw: unknown;
-}
-
-export type CallEventType = "ended" | "transcribed";
-
-export interface NormalizedCallEvent {
-	externalCallId: string;
-	type: CallEventType;
-	status: CallStatus | null;
-	durationSeconds: number | null;
-	transcriptAvailable: boolean;
-	raw: unknown;
-}
-
-export interface WebhookInput {
-	rawBody: string;
-	headers: Record<string, string | undefined>;
 }
 
 export interface NormalizedNumber {
@@ -77,7 +59,8 @@ export interface ConfigureInboundInput {
 
 /**
  * The single contract every voice platform hides behind. Business logic (the
- * generic `Run`) only ever talks to this — never a vendor SDK directly.
+ * generic `Run`) only ever talks to this — never a vendor SDK directly. Call
+ * results converge by polling {@link getCall}; we do not use webhooks.
  */
 export abstract class VoiceProvider {
 	abstract readonly name: ProviderName;
@@ -88,10 +71,6 @@ export abstract class VoiceProvider {
 
 	/** Signed/short-lived URL to the call audio, or null if none is available. */
 	abstract getRecordingUrl(input: { externalCallId: string }): Promise<string | null>;
-
-	abstract verifyWebhook(input: WebhookInput): boolean;
-
-	abstract parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null;
 
 	/** Numbers owned on this platform, usable for inbound competitor tests. */
 	abstract listNumbers(): Promise<NormalizedNumber[]>;

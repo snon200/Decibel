@@ -2,7 +2,8 @@ import { reconcileRuns } from "./reconcileRuns.ts";
 import { retryFailedJudges } from "./retryFailedJudges.ts";
 import { logger } from "../lib/logger.ts";
 
-const RECONCILE_INTERVAL_MS = 20_000;
+// Polling is primary (no webhooks), so poll active calls on a tight cadence.
+const RECONCILE_INTERVAL_MS = 5_000;
 const RETRY_JUDGE_INTERVAL_MS = 60_000;
 
 const runSafely = async (name: string, fn: () => Promise<void>): Promise<void> => {

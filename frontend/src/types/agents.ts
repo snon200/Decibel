@@ -10,7 +10,7 @@ export type Agent = {
 };
 
 export type CreateAgentInput = {
-	name: string;
+	name?: string;
 	phoneNumber: string;
 	description: string;
 };

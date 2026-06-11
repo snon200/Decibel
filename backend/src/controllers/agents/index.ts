@@ -18,7 +18,7 @@ const e164 = z
 	);
 
 const createAgentSchema = z.object({
-	name: z.string().min(1).max(120),
+	name: z.string().min(1).max(120).optional(),
 	phoneNumber: e164,
 	description: z.string().min(10).max(2000),
 });

@@ -5,14 +5,6 @@ import { useCreateAgent } from "../../hooks/useAgents";
 
 type Step = "landing" | "describe" | "phone" | "submitting";
 
-const deriveName = (description: string): string => {
-	const cleaned = description.trim().replace(/\s+/g, " ");
-	if (cleaned.length <= 48) return cleaned || "Untitled agent";
-	const sliced = cleaned.slice(0, 48);
-	const lastSpace = sliced.lastIndexOf(" ");
-	return (lastSpace > 16 ? sliced.slice(0, lastSpace) : sliced) + "…";
-};
-
 const E164 = /^\+[1-9]\d{1,14}$/;
 
 // Strip whitespace, invisible bidi marks, parens, dashes, dots — keep only `+` and digits.
@@ -61,7 +53,6 @@ export default function WelcomeWizard() {
 		setStep("submitting");
 		createAgent.mutate(
 			{
-				name: deriveName(description),
 				phoneNumber: normalized,
 				description: description.trim(),
 			},

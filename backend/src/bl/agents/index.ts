@@ -14,27 +14,59 @@ export type AgentDetail = {
 	latestRunsByTest: Record<string, Run | null>;
 };
 
+const fallbackName = (description: string): string => {
+	const cleaned = description.trim().replace(/\s+/g, " ");
+	if (cleaned.length <= 48) return cleaned || "Untitled agent";
+	const sliced = cleaned.slice(0, 48);
+	const lastSpace = sliced.lastIndexOf(" ");
+	return (lastSpace > 16 ? sliced.slice(0, lastSpace) : sliced) + "…";
+};
+
 export const createAgent = async (input: {
-	name: string;
+	name?: string | undefined;
 	phoneNumber: string;
 	description: string;
 }): Promise<{ agent: Agent; tests: Test[]; suiteError?: string }> => {
-	const agent = await AgentsDal.createAgent(input);
+	// Single LLM call: generate the agent name (unless the user supplied one)
+	// AND the test suite. Then persist atomically.
+	let content: SuiteBl.GeneratedContent | null = null;
+	let suiteError: string | undefined;
 	try {
-		const tests = await SuiteBl.generateFromDescription({
-			agentId: agent.id,
-			name: agent.name,
-			description: agent.description,
+		content = await SuiteBl.generateContent({
+			...(input.name ? { agentNameHint: input.name } : {}),
+			description: input.description,
 		});
-		return { agent, tests };
 	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
+		suiteError = err instanceof Error ? err.message : String(err);
 		logger.error("suite generation failed during createAgent", {
-			agentId: agent.id,
-			error: message,
+			error: suiteError,
 		});
-		return { agent, tests: [], suiteError: message };
 	}
+
+	const name =
+		input.name?.trim() ||
+		content?.agentName?.trim() ||
+		fallbackName(input.description);
+
+	const agent = await AgentsDal.createAgent({
+		name,
+		phoneNumber: input.phoneNumber,
+		description: input.description,
+	});
+
+	if (!content) {
+		return { agent, tests: [], ...(suiteError ? { suiteError } : {}) };
+	}
+
+	const tests = await TestsDal.bulkCreateTests({
+		tests: content.tests.map((t) => ({ ...t, agentId: agent.id })),
+	});
+	logger.info("agent + suite created", {
+		agentId: agent.id,
+		testCount: tests.length,
+		nameSource: input.name ? "user" : content.agentName ? "llm" : "fallback",
+	});
+	return { agent, tests };
 };
 
 export const getAgent = async (input: { id: string }): Promise<AgentDetail> => {
@@ -44,7 +76,6 @@ export const getAgent = async (input: { id: string }): Promise<AgentDetail> => {
 	const allRuns = await RunsDal.listRunsForAgent({ agentId: agent.id });
 	const latestRunsByTest: Record<string, Run | null> = {};
 	for (const test of tests) latestRunsByTest[test.id] = null;
-	// allRuns is asc by createdAt; iteration keeps the most recent per test.
 	for (const run of allRuns) {
 		latestRunsByTest[run.testId] = run;
 	}

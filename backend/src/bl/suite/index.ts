@@ -10,14 +10,21 @@ import {
 import type { NewTestInput } from "../../dal/tests.ts";
 import type { Criterion, Test } from "../../database/schemas/tests.ts";
 
-// Pure: ask the LLM to design a suite for the agent. Does not persist.
-const callLlm = async (input: {
-	agentId: string;
-	name: string;
+export type GeneratedContent = {
+	agentName: string;
+	// tests without agentId — caller fills it in once the agent row exists.
+	tests: Omit<NewTestInput, "agentId">[];
+};
+
+// Pure LLM call. Returns the generated content; does not persist.
+// Surfaces to bl/agents.createAgent (which uses the name) and to internal
+// suite functions below (which then attach an agentId and persist).
+export const generateContent = async (input: {
+	agentNameHint?: string;
 	description: string;
-}): Promise<NewTestInput[]> => {
+}): Promise<GeneratedContent> => {
 	const prompt = buildSuiteGeneratorPrompt({
-		agentName: input.name,
+		...(input.agentNameHint ? { agentNameHint: input.agentNameHint } : {}),
 		description: input.description,
 	});
 	const result = await llm.completeJson({
@@ -25,7 +32,7 @@ const callLlm = async (input: {
 		schema: GeneratedSuiteSchema,
 	});
 
-	return result.tests.map((t) => {
+	const tests = result.tests.map((t) => {
 		const seen = new Set<string>();
 		const criteria: Criterion[] = [];
 		for (const c of t.criteria) {
@@ -34,22 +41,24 @@ const callLlm = async (input: {
 			criteria.push({ id: c.id, text: c.text });
 		}
 		return {
-			agentId: input.agentId,
 			name: t.name,
 			scenarioSummary: t.scenarioSummary,
 			testerInstruction: t.testerInstruction,
 			criteria,
 		};
 	});
+
+	return { agentName: result.agentName.trim(), tests };
 };
 
 export const generateFromDescription = async (input: {
 	agentId: string;
-	name: string;
 	description: string;
 }): Promise<Test[]> => {
-	const tests = await callLlm(input);
-	const inserted = await TestsDal.bulkCreateTests({ tests });
+	const content = await generateContent({ description: input.description });
+	const inserted = await TestsDal.bulkCreateTests({
+		tests: content.tests.map((t) => ({ ...t, agentId: input.agentId })),
+	});
 	logger.info("suite generated", {
 		agentId: input.agentId,
 		count: inserted.length,
@@ -62,14 +71,14 @@ export const regenerateSuite = async (input: {
 }): Promise<Test[]> => {
 	const agent = await AgentsDal.getAgent({ id: input.agentId });
 	if (!agent) throw new NotFoundError("Agent");
-	const tests = await callLlm({
-		agentId: agent.id,
-		name: agent.name,
+	// Regenerate keeps the current agent name — the user may have edited it.
+	const content = await generateContent({
+		agentNameHint: agent.name,
 		description: agent.description,
 	});
 	const inserted = await TestsDal.replaceSuiteForAgent({
 		agentId: agent.id,
-		tests,
+		tests: content.tests.map((t) => ({ ...t, agentId: agent.id })),
 	});
 	logger.info("suite regenerated", {
 		agentId: agent.id,

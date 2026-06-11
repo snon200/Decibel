@@ -6,6 +6,7 @@ import { agentKey, useAgent } from "../hooks/useAgents";
 import SuiteList from "../components/suite/SuiteList";
 import RunSuiteButton from "../components/suite/RunSuiteButton";
 import RegenerateSuiteButton from "../components/suite/RegenerateSuiteButton";
+import EditableAgentName from "../components/agents/EditableAgentName";
 import { isTerminal } from "../types/runs";
 
 export default function AgentDetailPage() {
@@ -35,11 +36,11 @@ export default function AgentDetailPage() {
 		<Wrap>
 			<Header>
 				<HeaderLeft>
-					<AgentName>{agent.name}</AgentName>
+					<EditableAgentName agentId={agent.id} name={agent.name} />
 					<Phone>{agent.phoneNumber}</Phone>
 				</HeaderLeft>
 				<Actions>
-					<RunSuiteButton agentId={agent.id} />
+					<RunSuiteButton agentId={agent.id} testCount={tests.length} />
 					<RegenerateSuiteButton agentId={agent.id} />
 				</Actions>
 			</Header>
@@ -79,13 +80,6 @@ const HeaderLeft = styled.div`
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-`;
-
-const AgentName = styled.h1`
-	margin: 0;
-	font-size: 1.8rem;
-	font-weight: 600;
-	letter-spacing: -0.025em;
 `;
 
 const Phone = styled.span`

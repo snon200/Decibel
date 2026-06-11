@@ -22,6 +22,22 @@ export const TERMINAL_STATUSES: readonly CallStatus[] = [
 export const isTerminal = (status: CallStatus): boolean =>
 	TERMINAL_STATUSES.includes(status);
 
+/**
+ * Statuses where the user can cancel a run. Mirrors CANCELLABLE_STATUSES on
+ * the backend (bl/runs/cancelRun.ts):
+ *   - queued / ringing: line hasn't connected yet.
+ *   - busy: terminal, but a retry attempt may be queued — cancelling stops it.
+ * in_progress is excluded by design — don't cancel mid-call.
+ */
+export const CANCELLABLE_STATUSES: readonly CallStatus[] = [
+	"queued",
+	"ringing",
+	"busy",
+];
+
+export const isCancellable = (status: CallStatus): boolean =>
+	CANCELLABLE_STATUSES.includes(status);
+
 export type CorrelatedMessage = {
 	id: string;
 	from: string;
@@ -47,6 +63,7 @@ export type Run = {
 	audioUrl: string | null;
 	durationSeconds: number | null;
 	overallScore: number | null;
+	attemptNumber: number;
 	error: string | null;
 	createdAt: string;
 	completedAt: string | null;

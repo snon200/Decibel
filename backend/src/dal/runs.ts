@@ -18,6 +18,7 @@ export const createRun = async (input: {
 	targetPhoneNumber: string;
 	provider?: string;
 	status?: CallStatus;
+	attemptNumber?: number;
 }): Promise<Run> => {
 	const [row] = await db
 		.insert(runs)
@@ -28,6 +29,7 @@ export const createRun = async (input: {
 			targetPhoneNumber: input.targetPhoneNumber,
 			provider: input.provider ?? "dial",
 			status: input.status ?? "queued",
+			attemptNumber: input.attemptNumber ?? 1,
 		} satisfies NewRun)
 		.returning();
 	if (!row) throw new Error("createRun returned no row");
@@ -154,6 +156,26 @@ export const listRunsToPoll = async (input: {
 		);
 };
 
+/**
+ * Runs that have been non-terminal too long. The timeout sweep marks these as
+ * `failed` so the dashboard doesn't show them stuck on `queued`/`in_progress`
+ * forever when the line is unreachable or the provider stops updating.
+ */
+export const listTimedOutRuns = async (input: {
+	olderThanSeconds: number;
+}): Promise<Run[]> => {
+	const terminal = Array.from(TERMINAL_STATUSES);
+	return db
+		.select()
+		.from(runs)
+		.where(
+			and(
+				notInArray(runs.status, terminal),
+				sql`${runs.createdAt} < now() - make_interval(secs => ${input.olderThanSeconds})`,
+			),
+		);
+};
+
 export const listRunsForTest = async (input: {
 	testId: string;
 }): Promise<Run[]> => {
@@ -182,6 +204,7 @@ export const listRunsForAgent = async (input: {
 			audioUrl: runs.audioUrl,
 			durationSeconds: runs.durationSeconds,
 			overallScore: runs.overallScore,
+			attemptNumber: runs.attemptNumber,
 			error: runs.error,
 			createdAt: runs.createdAt,
 			completedAt: runs.completedAt,

@@ -1,17 +1,20 @@
 import { Link, useParams } from "react-router-dom";
 import styled from "styled-components";
-import { useRun } from "../hooks/useRun";
+import { useCancelRun, useRun } from "../hooks/useRun";
 import RunStatusBadge from "../components/runs/RunStatusBadge";
 import TargetSummary from "../components/runs/TargetSummary";
 import TranscriptViewer from "../components/runs/TranscriptViewer";
 import AudioPlayer from "../components/runs/AudioPlayer";
 import ConversationPlayer from "../components/runs/ConversationPlayer";
 import Scorecard from "../components/scorecard/Scorecard";
-import { isTerminal } from "../types/runs";
+import { isCancellable, isTerminal } from "../types/runs";
 
 export default function RunDetailPage() {
 	const { runId } = useParams();
 	const { data, isLoading, error } = useRun(runId);
+	// useCancelRun needs an agentId for cache invalidation. Hook into the
+	// agent the run belongs to (resolved from the test once data loads).
+	const cancel = useCancelRun(data?.test.agentId ?? "");
 
 	if (isLoading) return <Status>Loading run…</Status>;
 	if (error) return <Status $danger>{(error as Error).message}</Status>;
@@ -19,12 +22,24 @@ export default function RunDetailPage() {
 
 	const { run, test, scores, audioUrl } = data;
 	const live = !isTerminal(run.status);
+	const cancellable = isCancellable(run.status);
 
 	return (
 		<Wrap>
 			<TopRow>
 				<BackLink to={`/agents/${test.agentId}`}>← Back to agent</BackLink>
-				<RunStatusBadge status={run.status} />
+				<TopRight>
+					<RunStatusBadge status={run.status} />
+					{cancellable && (
+						<CancelBtn
+							type="button"
+							onClick={() => cancel.mutate(run.id)}
+							disabled={cancel.isPending}
+						>
+							{cancel.isPending ? "Cancelling…" : "Cancel run"}
+						</CancelBtn>
+					)}
+				</TopRight>
 			</TopRow>
 
 			<Header>
@@ -37,6 +52,10 @@ export default function RunDetailPage() {
 					<Pulse />
 					Call in progress — transcript and scorecard update automatically.
 				</LiveBanner>
+			)}
+
+			{cancel.error && (
+				<ErrorText>{(cancel.error as Error).message}</ErrorText>
 			)}
 
 			{run.error && <ErrorText>{run.error}</ErrorText>}
@@ -92,6 +111,14 @@ const TopRow = styled.div`
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+`;
+
+const TopRight = styled.div`
+	display: flex;
+	align-items: center;
+	gap: 10px;
 `;
 
 const BackLink = styled(Link)`
@@ -102,6 +129,22 @@ const BackLink = styled(Link)`
 	&:hover {
 		color: var(--accent-bright);
 	}
+`;
+
+const CancelBtn = styled.button`
+	background: transparent;
+	color: var(--danger);
+	border: 1px solid rgba(248, 113, 113, 0.4);
+	border-radius: 999px;
+	padding: 6px 14px;
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+	&:hover:not(:disabled) {
+		background: rgba(248, 113, 113, 0.12);
+		border-color: var(--danger);
+	}
+	&:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const Header = styled.header`

@@ -12,6 +12,17 @@ export type { RunTarget } from "./startRun.ts";
 export { runSuite } from "./runSuite.ts";
 export { ingestCallResult } from "./ingestCallResult.ts";
 export { judgeAndPersist } from "./judgeAndPersist.ts";
+export { retryRun, MAX_BUSY_ATTEMPTS } from "./retryRun.ts";
+export {
+	timeoutStaleRuns,
+	MAX_CALL_DURATION_SECONDS,
+	RUN_TIMEOUT_SECONDS,
+} from "./timeoutStaleRuns.ts";
+export {
+	cancelRun,
+	isCancellableStatus,
+	CANCELLABLE_STATUSES,
+} from "./cancelRun.ts";
 
 export type RunDetail = {
 	run: Run;

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
 import RunStatusBadge from "../runs/RunStatusBadge";
+import TestHistoryDialog from "./TestHistoryDialog";
 import { useStartTestRun } from "../../hooks/useSuite";
 import { isTerminal, type Run } from "../../types/runs";
 import type { Test } from "../../types/suite";
@@ -20,6 +22,7 @@ export default function TestCard({
 	onEdit: () => void;
 }) {
 	const start = useStartTestRun(agentId);
+	const [historyOpen, setHistoryOpen] = useState(false);
 	const busy = start.isPending || (latestRun != null && !isTerminal(latestRun.status));
 
 	return (
@@ -42,11 +45,19 @@ export default function TestCard({
 					{busy ? "Running…" : "Run"}
 				</RunBtn>
 				<EditBtn onClick={onEdit}>Edit</EditBtn>
-				{latestRun && isTerminal(latestRun.status) && (
+				<HistoryBtn type="button" onClick={() => setHistoryOpen(true)}>
+					History
+				</HistoryBtn>
+				{latestRun && (busy || isTerminal(latestRun.status)) && (
 					<ResultsLink to={`/runs/${latestRun.id}`}>View results →</ResultsLink>
 				)}
 			</Actions>
 			{start.error && <ErrorText>{(start.error as Error).message}</ErrorText>}
+			<TestHistoryDialog
+				test={test}
+				open={historyOpen}
+				onClose={() => setHistoryOpen(false)}
+			/>
 		</Card>
 	);
 }
@@ -117,6 +128,7 @@ const Actions = styled.div`
 	align-items: center;
 	gap: 8px;
 	margin-top: 4px;
+	flex-wrap: wrap;
 `;
 
 const RunBtn = styled.button`
@@ -140,7 +152,7 @@ const RunBtn = styled.button`
 	}
 `;
 
-const EditBtn = styled.button`
+const ghostBtn = `
 	background: transparent;
 	color: var(--text-muted);
 	border: 1px solid var(--border);
@@ -154,6 +166,9 @@ const EditBtn = styled.button`
 		border-color: var(--border-strong);
 	}
 `;
+
+const EditBtn = styled.button`${ghostBtn}`;
+const HistoryBtn = styled.button`${ghostBtn}`;
 
 const ResultsLink = styled(Link)`
 	color: var(--accent-bright);

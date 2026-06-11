@@ -96,3 +96,10 @@ export const updateAgent = async (input: {
 	if (!existing) throw new NotFoundError("Agent");
 	return AgentsDal.updateAgent(input);
 };
+
+export const deleteAgent = async (input: { id: string }): Promise<void> => {
+	const existing = await AgentsDal.getAgent({ id: input.id });
+	if (!existing) throw new NotFoundError("Agent");
+	await AgentsDal.deleteAgent({ id: input.id });
+	logger.info("agent deleted", { agentId: input.id });
+};

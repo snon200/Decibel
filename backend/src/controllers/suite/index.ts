@@ -44,11 +44,37 @@ router.post("/agents/:agentId/regenerate-suite", async (req, res, next) => {
 	}
 });
 
+const addTestsBodySchema = z.object({
+	focus: z.string().min(1).max(500).optional(),
+	count: z.number().int().min(1).max(8).optional(),
+});
+
+router.post("/agents/:agentId/add-tests", async (req, res, next) => {
+	try {
+		const { agentId } = agentIdParam.parse(req.params);
+		const body = addTestsBodySchema.parse(req.body ?? {});
+		const tests = await SuiteBl.addTests({ agentId, ...body });
+		res.status(201).json(tests);
+	} catch (err) {
+		next(err);
+	}
+});
+
 router.get("/agents/:agentId/tests", async (req, res, next) => {
 	try {
 		const { agentId } = agentIdParam.parse(req.params);
 		const tests = await SuiteBl.listTestsForAgent({ agentId });
 		res.status(200).json(tests);
+	} catch (err) {
+		next(err);
+	}
+});
+
+router.get("/tests/:id/runs", async (req, res, next) => {
+	try {
+		const { id } = testIdParam.parse(req.params);
+		const runs = await SuiteBl.listTestRuns({ testId: id });
+		res.status(200).json(runs);
 	} catch (err) {
 		next(err);
 	}
@@ -70,6 +96,16 @@ router.patch("/tests/:id", async (req, res, next) => {
 		const body = updateTestSchema.parse(req.body);
 		const test = await SuiteBl.updateTest({ id, ...body });
 		res.status(200).json(test);
+	} catch (err) {
+		next(err);
+	}
+});
+
+router.delete("/tests/:id", async (req, res, next) => {
+	try {
+		const { id } = testIdParam.parse(req.params);
+		await SuiteBl.deleteTest({ id });
+		res.status(204).end();
 	} catch (err) {
 		next(err);
 	}

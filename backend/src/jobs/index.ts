@@ -1,10 +1,12 @@
 import { reconcileRuns } from "./reconcileRuns.ts";
 import { retryFailedJudges } from "./retryFailedJudges.ts";
+import { timeoutStaleRuns } from "../bl/runs/timeoutStaleRuns.ts";
 import { logger } from "../lib/logger.ts";
 
 // Polling is primary (no webhooks), so poll active calls on a tight cadence.
 const RECONCILE_INTERVAL_MS = 5_000;
 const RETRY_JUDGE_INTERVAL_MS = 60_000;
+const TIMEOUT_SWEEP_INTERVAL_MS = 30_000;
 
 const runSafely = async (name: string, fn: () => Promise<void>): Promise<void> => {
 	try {
@@ -25,8 +27,13 @@ export const startJobs = (): void => {
 		void runSafely("retryFailedJudges", retryFailedJudges);
 	}, RETRY_JUDGE_INTERVAL_MS);
 
+	setInterval(() => {
+		void runSafely("timeoutStaleRuns", timeoutStaleRuns);
+	}, TIMEOUT_SWEEP_INTERVAL_MS);
+
 	logger.info("background jobs started", {
 		reconcileMs: RECONCILE_INTERVAL_MS,
 		retryJudgeMs: RETRY_JUDGE_INTERVAL_MS,
+		timeoutSweepMs: TIMEOUT_SWEEP_INTERVAL_MS,
 	});
 };

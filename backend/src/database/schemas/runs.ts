@@ -47,6 +47,7 @@ export const runs = pgTable(
 		audioUrl: text("audio_url"),
 		durationSeconds: integer("duration_seconds"),
 		overallScore: integer("overall_score"),
+		attemptNumber: integer("attempt_number").notNull().default(1),
 		error: text("error"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()

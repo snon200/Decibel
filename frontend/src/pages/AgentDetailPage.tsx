@@ -6,9 +6,11 @@ import { agentKey, useAgent } from "../hooks/useAgents";
 import SuiteList from "../components/suite/SuiteList";
 import RunSuiteButton from "../components/suite/RunSuiteButton";
 import RegenerateSuiteButton from "../components/suite/RegenerateSuiteButton";
+import AddTestsButton from "../components/suite/AddTestsButton";
 import EditableAgentName from "../components/agents/EditableAgentName";
 import EditableAgentPhone from "../components/agents/EditableAgentPhone";
 import EditableAgentDescription from "../components/agents/EditableAgentDescription";
+import DeleteAgentButton from "../components/agents/DeleteAgentButton";
 import { isTerminal } from "../types/runs";
 
 export default function AgentDetailPage() {
@@ -47,6 +49,7 @@ export default function AgentDetailPage() {
 				<Actions>
 					<RunSuiteButton agentId={agent.id} testCount={tests.length} />
 					<RegenerateSuiteButton agentId={agent.id} />
+					<DeleteAgentButton agentId={agent.id} agentName={agent.name} />
 				</Actions>
 			</Header>
 
@@ -56,8 +59,11 @@ export default function AgentDetailPage() {
 			/>
 
 			<SectionRow>
-				<SectionTitle>Test suite</SectionTitle>
-				<Count>{tests.length} tests</Count>
+				<SectionLeft>
+					<SectionTitle>Test suite</SectionTitle>
+					<Count>{tests.length} tests</Count>
+				</SectionLeft>
+				<AddTestsButton agentId={agent.id} />
 			</SectionRow>
 
 			<SuiteList tests={tests} latestRunsByTest={latestRunsByTest} agentId={agent.id} />
@@ -99,9 +105,17 @@ const Actions = styled.div`
 
 const SectionRow = styled.div`
 	display: flex;
-	align-items: baseline;
+	justify-content: space-between;
+	align-items: center;
 	gap: 12px;
 	margin-top: 8px;
+	flex-wrap: wrap;
+`;
+
+const SectionLeft = styled.div`
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
 `;
 
 const SectionTitle = styled.h2`

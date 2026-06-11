@@ -1,6 +1,12 @@
 import { and, eq, gt, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db } from "../database/data-source.ts";
-import { runs, type NewRun, type Run, type TargetKind } from "../database/schemas/runs.ts";
+import {
+	runs,
+	type CorrelatedMessage,
+	type NewRun,
+	type Run,
+	type TargetKind,
+} from "../database/schemas/runs.ts";
 import { tests } from "../database/schemas/tests.ts";
 import type { CallStatus } from "../providers/types.ts";
 import { TERMINAL_STATUSES } from "../providers/types.ts";
@@ -76,6 +82,19 @@ export const applyRunUpdate = async (input: {
 		.where(eq(runs.id, input.id))
 		.returning();
 	if (!row) throw new Error("applyRunUpdate: no row for id " + input.id);
+	return row;
+};
+
+export const setRunMessages = async (input: {
+	id: string;
+	messages: CorrelatedMessage[];
+}): Promise<Run> => {
+	const [row] = await db
+		.update(runs)
+		.set({ messages: input.messages })
+		.where(eq(runs.id, input.id))
+		.returning();
+	if (!row) throw new Error("setRunMessages: no row for id " + input.id);
 	return row;
 };
 
@@ -159,6 +178,7 @@ export const listRunsForAgent = async (input: {
 			externalCallId: runs.externalCallId,
 			status: runs.status,
 			transcript: runs.transcript,
+			messages: runs.messages,
 			audioUrl: runs.audioUrl,
 			durationSeconds: runs.durationSeconds,
 			overallScore: runs.overallScore,

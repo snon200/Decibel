@@ -22,6 +22,17 @@ export const TERMINAL_STATUSES: readonly CallStatus[] = [
 export const isTerminal = (status: CallStatus): boolean =>
 	TERMINAL_STATUSES.includes(status);
 
+export type CorrelatedMessage = {
+	id: string;
+	from: string;
+	to: string;
+	body: string;
+	channel: string;
+	direction: "inbound" | "outbound";
+	createdAt: string;
+	secondsFromCallEnd: number | null;
+};
+
 export type Run = {
 	id: string;
 	testId: string;
@@ -32,6 +43,7 @@ export type Run = {
 	externalCallId: string | null;
 	status: CallStatus;
 	transcript: string | null;
+	messages: CorrelatedMessage[] | null;
 	audioUrl: string | null;
 	durationSeconds: number | null;
 	overallScore: number | null;

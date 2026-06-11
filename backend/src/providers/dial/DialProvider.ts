@@ -1,11 +1,14 @@
 import { placeDialCall } from "./placeCall.ts";
 import { getDialCall } from "./getCall.ts";
 import { getDialRecordingUrl } from "./getRecording.ts";
+import { listDialMessages } from "./getMessages.ts";
 import { configureDialInbound, listDialNumbers } from "./numbers.ts";
 import { VoiceProvider } from "../types.ts";
 import type {
 	ConfigureInboundInput,
+	ListMessagesInput,
 	NormalizedCall,
+	NormalizedMessage,
 	NormalizedNumber,
 	PlaceCallInput,
 	ProviderName,
@@ -24,6 +27,11 @@ export class DialProvider extends VoiceProvider {
 
 	getRecordingUrl(input: { externalCallId: string }): Promise<string | null> {
 		return getDialRecordingUrl(input);
+	}
+
+	/** Dial-specific: SMS isn't part of the cross-provider VoiceProvider contract. */
+	listMessages(input?: ListMessagesInput): Promise<NormalizedMessage[]> {
+		return listDialMessages(input);
 	}
 
 	listNumbers(): Promise<NormalizedNumber[]> {

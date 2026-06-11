@@ -5,6 +5,7 @@ import RunStatusBadge from "../components/runs/RunStatusBadge";
 import TargetSummary from "../components/runs/TargetSummary";
 import TranscriptViewer from "../components/runs/TranscriptViewer";
 import AudioPlayer from "../components/runs/AudioPlayer";
+import ConversationPlayer from "../components/runs/ConversationPlayer";
 import Scorecard from "../components/scorecard/Scorecard";
 import { isTerminal } from "../types/runs";
 
@@ -40,15 +41,28 @@ export default function RunDetailPage() {
 
 			{run.error && <ErrorText>{run.error}</ErrorText>}
 
-			<Section>
-				<SectionTitle>Recording</SectionTitle>
-				<AudioPlayer url={audioUrl} />
-			</Section>
+			{audioUrl ? (
+				<Section>
+					<SectionTitle>Recording &amp; transcript</SectionTitle>
+					<ConversationPlayer
+						url={audioUrl}
+						transcript={run.transcript ?? ""}
+						durationSeconds={run.durationSeconds}
+					/>
+				</Section>
+			) : (
+				<>
+					<Section>
+						<SectionTitle>Recording</SectionTitle>
+						<AudioPlayer url={audioUrl} />
+					</Section>
 
-			<Section>
-				<SectionTitle>Transcript</SectionTitle>
-				<TranscriptViewer transcript={run.transcript} />
-			</Section>
+					<Section>
+						<SectionTitle>Transcript</SectionTitle>
+						<TranscriptViewer transcript={run.transcript} />
+					</Section>
+				</>
+			)}
 
 			<Section>
 				<SectionTitle>Scorecard</SectionTitle>

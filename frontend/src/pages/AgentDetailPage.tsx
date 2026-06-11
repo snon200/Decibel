@@ -13,8 +13,6 @@ export default function AgentDetailPage() {
 	const { data, isLoading, error } = useAgent(agentId);
 	const qc = useQueryClient();
 
-	// Poll the agent detail while any run is non-terminal so per-test rows
-	// reflect live status without needing per-card useRun hooks.
 	useEffect(() => {
 		if (!agentId || !data) return;
 		const anyLive = Object.values(data.latestRunsByTest).some(
@@ -27,9 +25,9 @@ export default function AgentDetailPage() {
 		return () => clearInterval(t);
 	}, [agentId, data, qc]);
 
-	if (isLoading) return <p>Loading…</p>;
-	if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
-	if (!data) return <p>Agent not found.</p>;
+	if (isLoading) return <Status>Loading…</Status>;
+	if (error) return <Status $danger>{(error as Error).message}</Status>;
+	if (!data) return <Status>Agent not found.</Status>;
 
 	const { agent, tests, latestRunsByTest } = data;
 
@@ -48,20 +46,25 @@ export default function AgentDetailPage() {
 
 			<Description>{agent.description}</Description>
 
-			<SectionTitle>Test suite ({tests.length})</SectionTitle>
-			<SuiteList
-				tests={tests}
-				latestRunsByTest={latestRunsByTest}
-				agentId={agent.id}
-			/>
+			<SectionRow>
+				<SectionTitle>Test suite</SectionTitle>
+				<Count>{tests.length} tests</Count>
+			</SectionRow>
+
+			<SuiteList tests={tests} latestRunsByTest={latestRunsByTest} agentId={agent.id} />
 		</Wrap>
 	);
 }
 
 const Wrap = styled.div`
+	padding: 40px 32px 64px;
+	max-width: 1200px;
+	margin: 0 auto;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: 24px;
+	animation: fadeIn 0.35s var(--ease-out);
 `;
 
 const Header = styled.header`
@@ -80,13 +83,15 @@ const HeaderLeft = styled.div`
 
 const AgentName = styled.h1`
 	margin: 0;
-	font-size: 1.5rem;
+	font-size: 1.8rem;
+	font-weight: 600;
+	letter-spacing: -0.025em;
 `;
 
 const Phone = styled.span`
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	color: #6b7280;
-	font-size: 0.9rem;
+	font-family: var(--font-mono);
+	color: var(--text-dim);
+	font-size: 0.88rem;
 `;
 
 const Actions = styled.div`
@@ -97,18 +102,36 @@ const Actions = styled.div`
 
 const Description = styled.p`
 	margin: 0;
-	color: #374151;
-	background: #f9fafb;
-	border-left: 3px solid #e5e7eb;
-	padding: 12px 16px;
-	border-radius: 0 6px 6px 0;
+	color: var(--text-muted);
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-left: 3px solid var(--accent);
+	padding: 14px 18px;
+	border-radius: 0 var(--radius) var(--radius) 0;
+	line-height: 1.6;
+`;
+
+const SectionRow = styled.div`
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	margin-top: 8px;
 `;
 
 const SectionTitle = styled.h2`
 	margin: 0;
 	font-size: 1.1rem;
+	font-weight: 600;
+	letter-spacing: -0.015em;
 `;
 
-const ErrorText = styled.p`
-	color: #c0392b;
+const Count = styled.span`
+	color: var(--text-dim);
+	font-size: 0.85rem;
+`;
+
+const Status = styled.p<{ $danger?: boolean }>`
+	padding: 60px 32px;
+	text-align: center;
+	color: ${(p) => (p.$danger ? "var(--danger)" : "var(--text-muted)")};
 `;

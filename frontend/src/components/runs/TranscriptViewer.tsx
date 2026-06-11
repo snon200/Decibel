@@ -12,7 +12,7 @@ export default function TranscriptViewer({ transcript }: { transcript: string | 
 				const speaker = detectSpeaker(line);
 				return (
 					<Line key={i} $speaker={speaker}>
-						{line || " "}
+						{line || " "}
 					</Line>
 				);
 			})}
@@ -35,30 +35,31 @@ const detectSpeaker = (line: string): "tester" | "aut" | "system" | null => {
 };
 
 const Empty = styled.p`
-	color: #6b7280;
+	color: var(--text-dim);
 	font-style: italic;
+	margin: 0;
 `;
 
 const Card = styled.div`
-	background: #f9fafb;
-	border: 1px solid #e5e7eb;
-	border-radius: 8px;
-	padding: 16px;
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 18px 20px;
+	font-family: var(--font-mono);
 	font-size: 0.85rem;
-	line-height: 1.6;
-	max-height: 480px;
+	line-height: 1.65;
+	max-height: 520px;
 	overflow-y: auto;
 	white-space: pre-wrap;
 `;
 
 const speakerColors = {
-	tester: "#2563eb",
-	aut: "#059669",
-	system: "#6b7280",
+	tester: "var(--accent-bright)",
+	aut: "var(--success)",
+	system: "var(--text-dim)",
 };
 
 const Line = styled.div<{ $speaker: "tester" | "aut" | "system" | null }>`
-	color: ${(p) => (p.$speaker ? speakerColors[p.$speaker] : "#1f2937")};
+	color: ${(p) => (p.$speaker ? speakerColors[p.$speaker] : "var(--text-muted)")};
 	font-weight: ${(p) => (p.$speaker ? 500 : 400)};
 `;

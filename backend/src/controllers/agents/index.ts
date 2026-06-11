@@ -4,7 +4,18 @@ import * as AgentsBl from "../../bl/agents/index.ts";
 
 const router = express.Router();
 
-const e164 = z.string().regex(/^\+[1-9]\d{1,14}$/, "Phone must be E.164 (e.g. +14155551234)");
+// Strip whitespace, invisible bidi marks, parens, dashes, dots — keep only `+` and digits.
+const e164 = z
+	.string()
+	.transform((s) => s.replace(/[^\d+]/g, ""))
+	.pipe(
+		z
+			.string()
+			.regex(
+				/^\+[1-9]\d{1,14}$/,
+				"Phone must be E.164 (e.g. +14155551234)",
+			),
+	);
 
 const createAgentSchema = z.object({
 	name: z.string().min(1).max(120),

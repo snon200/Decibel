@@ -5,6 +5,9 @@ import { useStartTestRun } from "../../hooks/useSuite";
 import { isTerminal, type Run } from "../../types/runs";
 import type { Test } from "../../types/suite";
 
+const scoreColor = (n: number) =>
+	n >= 70 ? "var(--success)" : n >= 40 ? "var(--warning)" : "var(--danger)";
+
 export default function TestCard({
 	test,
 	latestRun,
@@ -27,21 +30,18 @@ export default function TestCard({
 			</Header>
 			<Summary>{test.scenarioSummary}</Summary>
 			<Meta>
-				<CountChip>{test.criteria.length} criteria</CountChip>
+				<MetaChip>{test.criteria.length} criteria</MetaChip>
 				{latestRun?.overallScore != null && (
-					<ScoreChip $score={latestRun.overallScore}>
+					<ScoreChip $color={scoreColor(latestRun.overallScore)}>
 						{latestRun.overallScore}%
 					</ScoreChip>
 				)}
 			</Meta>
 			<Actions>
-				<RunButton
-					onClick={() => start.mutate({ testId: test.id })}
-					disabled={busy}
-				>
+				<RunBtn onClick={() => start.mutate({ testId: test.id })} disabled={busy}>
 					{busy ? "Running…" : "Run"}
-				</RunButton>
-				<EditButton onClick={onEdit}>Edit</EditButton>
+				</RunBtn>
+				<EditBtn onClick={onEdit}>Edit</EditBtn>
 				{latestRun && isTerminal(latestRun.status) && (
 					<ResultsLink to={`/runs/${latestRun.id}`}>View results →</ResultsLink>
 				)}
@@ -52,13 +52,18 @@ export default function TestCard({
 }
 
 const Card = styled.div`
-	background: white;
-	border: 1px solid #e5e7eb;
-	border-radius: 8px;
-	padding: 16px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 18px;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 10px;
+	transition: border-color 0.2s var(--ease-out);
+	animation: fadeInUp 0.4s var(--ease-out) both;
+	&:hover {
+		border-color: var(--border-strong);
+	}
 `;
 
 const Header = styled.div`
@@ -71,12 +76,16 @@ const Header = styled.div`
 const Name = styled.h3`
 	margin: 0;
 	font-size: 1rem;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	color: var(--text);
 `;
 
 const Summary = styled.p`
 	margin: 0;
 	font-size: 0.9rem;
-	color: #4b5563;
+	color: var(--text-muted);
+	line-height: 1.5;
 `;
 
 const Meta = styled.div`
@@ -84,23 +93,23 @@ const Meta = styled.div`
 	gap: 8px;
 `;
 
-const CountChip = styled.span`
-	background: #f3f4f6;
-	color: #4b5563;
+const MetaChip = styled.span`
+	background: var(--surface-2);
+	color: var(--text-muted);
+	border: 1px solid var(--border);
 	padding: 2px 8px;
 	border-radius: 4px;
-	font-size: 0.75rem;
+	font-size: 0.72rem;
 `;
 
-const ScoreChip = styled.span<{ $score: number }>`
-	background: ${(p) =>
-		p.$score >= 70 ? "#d1fae5" : p.$score >= 40 ? "#fed7aa" : "#fecaca"};
-	color: ${(p) =>
-		p.$score >= 70 ? "#065f46" : p.$score >= 40 ? "#9a3412" : "#991b1b"};
+const ScoreChip = styled.span<{ $color: string }>`
+	background: var(--surface-2);
+	color: ${(p) => p.$color};
+	border: 1px solid var(--border);
 	padding: 2px 8px;
 	border-radius: 4px;
-	font-size: 0.75rem;
-	font-weight: 500;
+	font-size: 0.72rem;
+	font-weight: 600;
 `;
 
 const Actions = styled.div`
@@ -110,39 +119,45 @@ const Actions = styled.div`
 	margin-top: 4px;
 `;
 
-const RunButton = styled.button`
-	background: #2563eb;
+const RunBtn = styled.button`
+	background: linear-gradient(180deg, var(--accent-bright), var(--accent));
 	color: white;
 	border: none;
-	border-radius: 6px;
-	padding: 6px 14px;
-	font-size: 0.85rem;
+	border-radius: 999px;
+	padding: 6px 16px;
+	font-size: 0.82rem;
+	font-weight: 500;
 	cursor: pointer;
+	transition: transform 0.15s var(--ease-out), box-shadow 0.18s var(--ease-out);
+	box-shadow: 0 4px 12px -4px var(--accent-glow);
 	&:hover:not(:disabled) {
-		background: #1d4ed8;
+		transform: translateY(-1px);
+		box-shadow: 0 6px 18px -4px var(--accent-glow);
 	}
 	&:disabled {
-		opacity: 0.6;
+		opacity: 0.5;
 		cursor: not-allowed;
 	}
 `;
 
-const EditButton = styled.button`
-	background: white;
-	color: #374151;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
+const EditBtn = styled.button`
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--border);
+	border-radius: 999px;
 	padding: 6px 14px;
-	font-size: 0.85rem;
+	font-size: 0.82rem;
 	cursor: pointer;
+	transition: color 0.15s, border-color 0.15s;
 	&:hover {
-		background: #f9fafb;
+		color: var(--text);
+		border-color: var(--border-strong);
 	}
 `;
 
 const ResultsLink = styled(Link)`
-	color: #2563eb;
-	font-size: 0.85rem;
+	color: var(--accent-bright);
+	font-size: 0.82rem;
 	text-decoration: none;
 	margin-left: auto;
 	&:hover {
@@ -151,7 +166,7 @@ const ResultsLink = styled(Link)`
 `;
 
 const ErrorText = styled.p`
-	color: #c0392b;
-	font-size: 0.85rem;
+	color: var(--danger);
+	font-size: 0.82rem;
 	margin: 0;
 `;

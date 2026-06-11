@@ -3,6 +3,7 @@ import cors from "cors";
 import agentsRouter from "./controllers/agents/index.ts";
 import suiteRouter from "./controllers/suite/index.ts";
 import runsRouter from "./controllers/runs/index.ts";
+import competitorsRouter from "./controllers/competitors/index.ts";
 import dialWebhookRouter from "./controllers/webhooks/dial.ts";
 import { errorHandler } from "./lib/errorHandler.ts";
 import { startJobs } from "./jobs/index.ts";
@@ -25,6 +26,7 @@ app.get("/health", (_req, res) => {
 app.use(agentsRouter);
 app.use(suiteRouter);
 app.use(runsRouter);
+app.use(competitorsRouter);
 
 app.use(errorHandler);
 

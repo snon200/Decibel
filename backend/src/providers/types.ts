@@ -1,4 +1,4 @@
-export type ProviderName = "dial" | "vapi";
+export type ProviderName = "dial" | "vapi" | "elevenlabs";
 
 export type CallStatus =
 	| "queued"
@@ -57,6 +57,24 @@ export interface WebhookInput {
 	headers: Record<string, string | undefined>;
 }
 
+export interface NormalizedNumber {
+	id: string;
+	phoneNumber: string | null;
+	/** Current inbound system prompt, or null when the number uses its default. */
+	inboundPrompt: string | null;
+	raw: unknown;
+}
+
+export interface ConfigureInboundInput {
+	/** Provider number id to (re)configure. */
+	numberId: string;
+	/**
+	 * Inbound system prompt the Agent-Under-Test should answer with. Omit to
+	 * leave the number on its provider-defined default behavior.
+	 */
+	systemPrompt?: string;
+}
+
 /**
  * The single contract every voice platform hides behind. Business logic (the
  * generic `Run`) only ever talks to this — never a vendor SDK directly.
@@ -74,4 +92,15 @@ export abstract class VoiceProvider {
 	abstract verifyWebhook(input: WebhookInput): boolean;
 
 	abstract parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null;
+
+	/** Numbers owned on this platform, usable for inbound competitor tests. */
+	abstract listNumbers(): Promise<NormalizedNumber[]>;
+
+	/**
+	 * Point a number's inbound agent at a given system prompt, or leave it on
+	 * its default when no prompt is supplied. Used to host the Agent-Under-Test.
+	 */
+	abstract configureInboundNumber(
+		input: ConfigureInboundInput,
+	): Promise<NormalizedNumber>;
 }

@@ -1,16 +1,7 @@
 import type { CallStatus, NormalizedCall } from "../types.ts";
 
-interface VapiRecording {
-	mono?: { url?: string } | string;
-	stereoUrl?: string;
-	url?: string;
-}
-
 export interface VapiArtifact {
 	transcript?: string | null;
-	recording?: VapiRecording | null;
-	recordingUrl?: string | null;
-	stereoRecordingUrl?: string | null;
 }
 
 export interface VapiCall {
@@ -56,29 +47,12 @@ const durationFrom = (call: VapiCall): number | null => {
 	return Number.isFinite(ms) ? Math.round(ms / 1000) : null;
 };
 
-export const recordingUrlFrom = (call: VapiCall): string | null => {
-	const artifact = call.artifact;
-	if (!artifact) return null;
-	if (artifact.stereoRecordingUrl) return artifact.stereoRecordingUrl;
-	if (artifact.recordingUrl) return artifact.recordingUrl;
-
-	const recording = artifact.recording;
-	if (!recording) return null;
-	if (recording.stereoUrl) return recording.stereoUrl;
-	if (recording.url) return recording.url;
-	if (recording.mono) {
-		return typeof recording.mono === "string"
-			? recording.mono
-			: (recording.mono.url ?? null);
-	}
-	return null;
-};
-
 export const mapVapiCall = (call: VapiCall): NormalizedCall => ({
 	externalCallId: call.id,
 	status: mapVapiStatus(call),
 	durationSeconds: durationFrom(call),
 	transcript: call.artifact?.transcript ?? null,
-	recordingAvailable: recordingUrlFrom(call) !== null,
+	// Competitor recordings are out of scope — only the tester (Dial) records.
+	recordingAvailable: false,
 	raw: call,
 });

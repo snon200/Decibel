@@ -1,43 +1,14 @@
-import { useState } from "react";
 import styled from "styled-components";
-import AccountList from "./components/AccountList";
-import ATMInterface from "./components/ATMInterface";
-import CreateAccountForm from "./components/CreateAccountForm";
+import Counter from "./components/Counter";
 
 export default function App() {
-	document.title = "Bond ATM";
-
-	// States
-	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
-		null,
-	);
-	const [isCreateFormVisible, setIsCreateFormVisible] = useState(true);
-
-	// Handlers
-	const handleSelectAccount = (accountId: string) => {
-		setSelectedAccountId(accountId);
-		setIsCreateFormVisible(false);
-	};
-	const handleShowCreateAccount = () => {
-		setSelectedAccountId(null);
-		setIsCreateFormVisible(true);
-	};
+	document.title = "Dial";
 
 	return (
 		<AppShell>
 			<Container>
-				<PageTitle>Bond ATM</PageTitle>
-				{isCreateFormVisible && (
-					<CreateAccountForm onAccountCreated={handleSelectAccount} />
-				)}
-				{selectedAccountId !== null && (
-					<ATMInterface
-						accountId={selectedAccountId}
-						onShowCreateAccount={handleShowCreateAccount}
-						onClose={handleShowCreateAccount}
-					/>
-				)}
-				<AccountList onSelectAccount={handleSelectAccount} />
+				<PageTitle>Dial</PageTitle>
+				<Counter />
 			</Container>
 		</AppShell>
 	);

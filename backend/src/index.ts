@@ -1,20 +1,18 @@
 import express from "express";
 import cors from "cors";
-import accountsController from "./controllers/accounts/index.ts";
-import personsController from "./controllers/persons/index.ts";
-import transactionsController from "./controllers/transactions/index.ts";
+import counterController from "./controllers/counter/index.ts";
 
 const app = express();
 const port = 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use("/accounts", accountsController);
-app.use("/persons", personsController);
-app.use("/transactions", transactionsController);
+app.get("/health", (_req, res) => {
+	res.status(200).json({ status: "ok" });
+});
+
+app.use("/counter", counterController);
 
 const startServer = async () => {
 	try {

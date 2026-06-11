@@ -12,6 +12,6 @@ export default defineConfig({
 		port: Number(process.env.DB_PORT ?? 5432),
 		user: process.env.DB_USER ?? "postgres",
 		password: process.env.DB_PASSWORD ?? "postgres",
-		database: process.env.DB_NAME ?? "bond_atm",
+		database: process.env.DB_NAME ?? "dial_hackathon",
 	},
 });

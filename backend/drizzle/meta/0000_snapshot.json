@@ -1,149 +1,25 @@
 {
-  "id": "134334ed-9466-4825-9447-c1c2a5d2e708",
+  "id": "02ec0864-1eec-4029-9bc3-5b92fbe96bc2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.accounts": {
-      "name": "accounts",
+    "public.counter": {
+      "name": "counter",
       "schema": "",
       "columns": {
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
+        "id": {
+          "name": "id",
+          "type": "integer",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
           "notNull": true
         },
-        "balance_amount": {
-          "name": "balance_amount",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "balance_currency": {
-          "name": "balance_currency",
-          "type": "currency",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "daily_withdrawal_limit_amount": {
-          "name": "daily_withdrawal_limit_amount",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "daily_withdrawal_limit_currency": {
-          "name": "daily_withdrawal_limit_currency",
-          "type": "currency",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "active_flag": {
-          "name": "active_flag",
-          "type": "boolean",
+        "value": {
+          "name": "value",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": true
-        },
-        "create_date": {
-          "name": "create_date",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.persons": {
-      "name": "persons",
-      "schema": "",
-      "columns": {
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "document": {
-          "name": "document",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "birth_date": {
-          "name": "birth_date",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.transactions": {
-      "name": "transactions",
-      "schema": "",
-      "columns": {
-        "transaction_id": {
-          "name": "transaction_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "account_id": {
-          "name": "account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value_amount": {
-          "name": "value_amount",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value_currency": {
-          "name": "value_currency",
-          "type": "currency",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_date": {
-          "name": "transaction_date",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+          "default": 0
         }
       },
       "indexes": {},
@@ -155,16 +31,7 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {
-    "public.currency": {
-      "name": "currency",
-      "schema": "public",
-      "values": [
-        "USD",
-        "ILS"
-      ]
-    }
-  },
+  "enums": {},
   "schemas": {},
   "sequences": {},
   "roles": {},

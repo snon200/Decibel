@@ -42,3 +42,14 @@ export const useUpdateAgent = (id: string) => {
 		},
 	});
 };
+
+export const useDeleteAgent = () => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => AgentsApi.deleteAgent(id),
+		onSuccess: (_data, id) => {
+			qc.removeQueries({ queryKey: agentKey(id) });
+			void qc.invalidateQueries({ queryKey: agentsKey });
+		},
+	});
+};

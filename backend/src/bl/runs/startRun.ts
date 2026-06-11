@@ -60,6 +60,7 @@ export const resolveTarget = async (input: {
 export const startRunResolved = async (input: {
 	testId: string;
 	resolved: ResolvedTarget;
+	attemptNumber?: number;
 }): Promise<RunRow> => {
 	const test = await TestsDal.getTest({ id: input.testId });
 	if (!test) throw new NotFoundError("Test");
@@ -72,6 +73,7 @@ export const startRunResolved = async (input: {
 		targetPhoneNumber: input.resolved.phoneNumber,
 		provider: providerName,
 		status: "queued",
+		attemptNumber: input.attemptNumber ?? 1,
 	});
 
 	const provider = getProvider(providerName);

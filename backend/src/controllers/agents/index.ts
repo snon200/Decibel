@@ -71,4 +71,14 @@ router.patch("/agents/:id", async (req, res, next) => {
 	}
 });
 
+router.delete("/agents/:id", async (req, res, next) => {
+	try {
+		const { id } = idParamSchema.parse(req.params);
+		await AgentsBl.deleteAgent({ id });
+		res.status(204).send();
+	} catch (err) {
+		next(err);
+	}
+});
+
 export default router;

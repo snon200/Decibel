@@ -47,6 +47,7 @@ export type Run = {
 	audioUrl: string | null;
 	durationSeconds: number | null;
 	overallScore: number | null;
+	attemptNumber: number;
 	error: string | null;
 	createdAt: string;
 	completedAt: string | null;

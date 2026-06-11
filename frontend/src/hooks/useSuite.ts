@@ -19,6 +19,7 @@ const fakeRun = (testId: string, agent: AgentDetail["agent"]): Run => ({
 	audioUrl: null,
 	durationSeconds: null,
 	overallScore: null,
+	attemptNumber: 1,
 	error: null,
 	createdAt: new Date().toISOString(),
 	completedAt: null,
@@ -28,6 +29,27 @@ export const useRegenerateSuite = (agentId: string) => {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: () => SuiteApi.regenerateSuite(agentId),
+		onSuccess: () => {
+			void qc.invalidateQueries({ queryKey: agentKey(agentId) });
+		},
+	});
+};
+
+export const useAddTests = (agentId: string) => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (input: { focus?: string; count?: number }) =>
+			SuiteApi.addTests(agentId, input),
+		onSuccess: () => {
+			void qc.invalidateQueries({ queryKey: agentKey(agentId) });
+		},
+	});
+};
+
+export const useDeleteTest = (agentId: string) => {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (testId: string) => SuiteApi.deleteTest(testId),
 		onSuccess: () => {
 			void qc.invalidateQueries({ queryKey: agentKey(agentId) });
 		},

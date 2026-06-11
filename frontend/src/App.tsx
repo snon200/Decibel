@@ -23,7 +23,7 @@ const Shell = () => {
 			{!onLanding && (
 				<TopNav>
 					<NavBrand to="/agents">
-						<Dot /> Decibel
+						<LogoMark /> Decibel
 					</NavBrand>
 				</TopNav>
 			)}
@@ -79,12 +79,20 @@ const NavBrand = styled(Link)`
 	}
 `;
 
-const Dot = styled.span`
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--accent-bright);
-	box-shadow: 0 0 12px var(--accent-glow);
+const LogoMark = () => (
+	<LogoSvg viewBox="0 0 32 32" fill="none" aria-hidden>
+		<rect x="4" y="11" width="4" height="10" rx="2" fill="currentColor" />
+		<rect x="11" y="5" width="4" height="22" rx="2" fill="currentColor" />
+		<rect x="18" y="5" width="4" height="22" rx="2" fill="currentColor" />
+		<rect x="25" y="11" width="4" height="10" rx="2" fill="currentColor" />
+	</LogoSvg>
+);
+
+const LogoSvg = styled.svg`
+	width: 18px;
+	height: 18px;
+	color: var(--accent-bright);
+	filter: drop-shadow(0 0 8px var(--accent-glow));
 `;
 
 const Centered = styled.div`

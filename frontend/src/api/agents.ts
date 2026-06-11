@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "../api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../api";
 import type {
 	Agent,
 	AgentDetail,
@@ -17,3 +17,5 @@ export const updateAgent = (
 	id: string,
 	patch: { name?: string; phoneNumber?: string; description?: string },
 ) => apiPatch<Agent>(`/agents/${id}`, patch);
+
+export const deleteAgent = (id: string) => apiDelete(`/agents/${id}`);

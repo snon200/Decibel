@@ -56,6 +56,11 @@ export const listTestsForAgent = async (input: {
 		.orderBy(tests.createdAt);
 };
 
+export const deleteTest = async (input: { id: string }): Promise<void> => {
+	// Runs and scores cascade-delete via FK so we don't leave orphans.
+	await db.delete(tests).where(eq(tests.id, input.id));
+};
+
 export const updateTest = async (input: {
 	id: string;
 	name?: string | undefined;

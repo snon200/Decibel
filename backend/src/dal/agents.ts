@@ -46,3 +46,7 @@ export const updateAgent = async (input: {
 	if (!row) throw new Error("updateAgent: no row for id " + input.id);
 	return row;
 };
+
+export const deleteAgent = async (input: { id: string }): Promise<void> => {
+	await db.delete(agents).where(eq(agents.id, input.id));
+};

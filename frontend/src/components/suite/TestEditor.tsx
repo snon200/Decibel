@@ -1,7 +1,8 @@
 import { useState } from "react";
 import styled from "styled-components";
 import CriteriaEditor from "./CriteriaEditor";
-import { useUpdateTest } from "../../hooks/useSuite";
+import ConfirmDialog from "../ConfirmDialog";
+import { useDeleteTest, useUpdateTest } from "../../hooks/useSuite";
 import type { Criterion, Test } from "../../types/suite";
 
 export default function TestEditor({
@@ -14,10 +15,14 @@ export default function TestEditor({
 	onClose: () => void;
 }) {
 	const update = useUpdateTest(agentId);
+	const remove = useDeleteTest(agentId);
 	const [name, setName] = useState(test.name);
 	const [scenarioSummary, setScenarioSummary] = useState(test.scenarioSummary);
 	const [testerInstruction, setTesterInstruction] = useState(test.testerInstruction);
 	const [criteria, setCriteria] = useState<Criterion[]>(test.criteria);
+	const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+	const busy = update.isPending || remove.isPending;
 
 	const submit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -27,12 +32,21 @@ export default function TestEditor({
 		);
 	};
 
+	const performDelete = () => {
+		remove.mutate(test.id, {
+			onSuccess: () => {
+				setConfirmDeleteOpen(false);
+				onClose();
+			},
+		});
+	};
+
 	return (
-		<Backdrop onClick={onClose}>
+		<Backdrop onClick={() => !busy && onClose()}>
 			<Modal onClick={(e) => e.stopPropagation()} onSubmit={submit}>
 				<Header>
 					<Title>Edit test</Title>
-					<CloseBtn type="button" onClick={onClose} aria-label="Close">×</CloseBtn>
+					<CloseBtn type="button" onClick={onClose} aria-label="Close" disabled={busy}>×</CloseBtn>
 				</Header>
 
 				<Field>
@@ -64,14 +78,37 @@ export default function TestEditor({
 				</Field>
 
 				{update.error && <ErrorText>{(update.error as Error).message}</ErrorText>}
+				{remove.error && <ErrorText>{(remove.error as Error).message}</ErrorText>}
 
 				<Footer>
-					<Cancel type="button" onClick={onClose}>Cancel</Cancel>
-					<Save type="submit" disabled={update.isPending}>
+					<DeleteBtn
+						type="button"
+						onClick={() => setConfirmDeleteOpen(true)}
+						disabled={busy}
+					>
+						Delete test
+					</DeleteBtn>
+					<Spacer />
+					<Cancel type="button" onClick={onClose} disabled={busy}>
+						Cancel
+					</Cancel>
+					<Save type="submit" disabled={busy}>
 						{update.isPending ? "Saving…" : "Save"}
 					</Save>
 				</Footer>
 			</Modal>
+
+			<ConfirmDialog
+				open={confirmDeleteOpen}
+				title={`Delete "${test.name}"?`}
+				body="This permanently removes the test and any runs (and scores) recorded against it. This cannot be undone."
+				confirmLabel="Delete"
+				cancelLabel="Keep"
+				variant="danger"
+				busy={remove.isPending}
+				onConfirm={performDelete}
+				onCancel={() => !remove.isPending && setConfirmDeleteOpen(false)}
+			/>
 		</Backdrop>
 	);
 }
@@ -122,7 +159,8 @@ const CloseBtn = styled.button`
 	font-size: 1.4rem;
 	color: var(--text-muted);
 	cursor: pointer;
-	&:hover { color: var(--text); }
+	&:hover:not(:disabled) { color: var(--text); }
+	&:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const Field = styled.div`
@@ -155,7 +193,27 @@ const Textarea = styled.textarea`${inputCss} resize: vertical;`;
 const Footer = styled.div`
 	display: flex;
 	gap: 8px;
-	justify-content: flex-end;
+	align-items: center;
+`;
+
+const Spacer = styled.div`
+	flex: 1;
+`;
+
+const DeleteBtn = styled.button`
+	background: transparent;
+	color: var(--danger);
+	border: 1px solid rgba(248, 113, 113, 0.4);
+	border-radius: 999px;
+	padding: 8px 16px;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s;
+	&:hover:not(:disabled) {
+		background: rgba(248, 113, 113, 0.12);
+		border-color: var(--danger);
+	}
+	&:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const Save = styled.button`
@@ -178,7 +236,8 @@ const Cancel = styled.button`
 	border-radius: 999px;
 	padding: 8px 18px;
 	cursor: pointer;
-	&:hover { color: var(--text); border-color: var(--border-strong); }
+	&:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+	&:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const ErrorText = styled.p`

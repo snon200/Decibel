@@ -4,6 +4,7 @@ import { logger } from "../../lib/logger.ts";
 import { getProvider } from "../../providers/registry.ts";
 import { rehydrate, toUpdate, isTerminalString } from "./runAdapter.ts";
 import { judgeAndPersist } from "./judgeAndPersist.ts";
+import { retryRun, shouldRetry } from "./retryRun.ts";
 import { correlateSms } from "./correlateSms.ts";
 import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
 
@@ -90,6 +91,15 @@ export const ingestCallResult = async (input: {
 		terminal: run.isTerminal,
 		hasTranscript: Boolean(persisted.transcript),
 	});
+
+	if (run.isTerminal && shouldRetry(persisted)) {
+		void retryRun({ originalRunRow: persisted }).catch((err) => {
+			logger.error("retryRun threw", {
+				runId: persisted.id,
+				error: err instanceof Error ? err.message : String(err),
+			});
+		});
+	}
 
 	if (
 		run.isTerminal &&

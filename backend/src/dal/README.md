@@ -9,8 +9,8 @@ vendor calls.** Just typed CRUD that the `bl/` layer composes.
 - `tests.ts` — `bulkCreateTests` (suite generation writes many at once), `getTest`,
   `listTestsForAgent`, `updateTest`, `replaceSuiteForAgent`.
 - `runs.ts` — `createRun`, `getRun`, `getRunByExternalCallId`, `updateRunStatus`,
-  `setRunResult` (transcript + `audio_url` + duration), `listStaleRuns` (for the
-  reconciler).
+  `setRunResult` (transcript + `audio_url` + duration), `listRunsToPoll` (for the
+  reconcile poller — in-flight runs plus completed runs still missing a transcript).
 - `scores.ts` — `insertScores`, `getScoresForRun`.
 - `competitors.ts` — `createCompetitor`, `getCompetitor`, `listCompetitorsForAgent`,
   `softDeleteCompetitor`.

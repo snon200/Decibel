@@ -31,8 +31,11 @@ export const useCreateAgent = () => {
 export const useUpdateAgent = (id: string) => {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (patch: { name?: string; description?: string }) =>
-			AgentsApi.updateAgent(id, patch),
+		mutationFn: (patch: {
+			name?: string;
+			phoneNumber?: string;
+			description?: string;
+		}) => AgentsApi.updateAgent(id, patch),
 		onSuccess: () => {
 			void qc.invalidateQueries({ queryKey: agentKey(id) });
 			void qc.invalidateQueries({ queryKey: agentsKey });

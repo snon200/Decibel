@@ -7,6 +7,8 @@ import SuiteList from "../components/suite/SuiteList";
 import RunSuiteButton from "../components/suite/RunSuiteButton";
 import RegenerateSuiteButton from "../components/suite/RegenerateSuiteButton";
 import EditableAgentName from "../components/agents/EditableAgentName";
+import EditableAgentPhone from "../components/agents/EditableAgentPhone";
+import EditableAgentDescription from "../components/agents/EditableAgentDescription";
 import { isTerminal } from "../types/runs";
 
 export default function AgentDetailPage() {
@@ -37,7 +39,10 @@ export default function AgentDetailPage() {
 			<Header>
 				<HeaderLeft>
 					<EditableAgentName agentId={agent.id} name={agent.name} />
-					<Phone>{agent.phoneNumber}</Phone>
+					<EditableAgentPhone
+						agentId={agent.id}
+						phoneNumber={agent.phoneNumber}
+					/>
 				</HeaderLeft>
 				<Actions>
 					<RunSuiteButton agentId={agent.id} testCount={tests.length} />
@@ -45,7 +50,10 @@ export default function AgentDetailPage() {
 				</Actions>
 			</Header>
 
-			<Description>{agent.description}</Description>
+			<EditableAgentDescription
+				agentId={agent.id}
+				description={agent.description}
+			/>
 
 			<SectionRow>
 				<SectionTitle>Test suite</SectionTitle>
@@ -79,30 +87,14 @@ const Header = styled.header`
 const HeaderLeft = styled.div`
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
-`;
-
-const Phone = styled.span`
-	font-family: var(--font-mono);
-	color: var(--text-dim);
-	font-size: 0.88rem;
+	gap: 6px;
+	align-items: flex-start;
 `;
 
 const Actions = styled.div`
 	display: flex;
 	gap: 8px;
 	align-items: flex-start;
-`;
-
-const Description = styled.p`
-	margin: 0;
-	color: var(--text-muted);
-	background: var(--surface);
-	border: 1px solid var(--border);
-	border-left: 3px solid var(--accent);
-	padding: 14px 18px;
-	border-radius: 0 var(--radius) var(--radius) 0;
-	line-height: 1.6;
 `;
 
 const SectionRow = styled.div`

@@ -15,5 +15,5 @@ export const createAgent = (input: CreateAgentInput) =>
 
 export const updateAgent = (
 	id: string,
-	patch: { name?: string; description?: string },
+	patch: { name?: string; phoneNumber?: string; description?: string },
 ) => apiPatch<Agent>(`/agents/${id}`, patch);

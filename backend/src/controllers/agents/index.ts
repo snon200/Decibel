@@ -25,6 +25,7 @@ const createAgentSchema = z.object({
 
 const updateAgentSchema = z.object({
 	name: z.string().min(1).max(120).optional(),
+	phoneNumber: e164.optional(),
 	description: z.string().min(10).max(2000).optional(),
 });
 

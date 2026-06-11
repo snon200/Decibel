@@ -2,13 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled, { css, keyframes } from "styled-components";
 import { useCreateAgent } from "../../hooks/useAgents";
+import { E164_REGEX, normalizePhone } from "../../utils/phone";
 
 type Step = "landing" | "describe" | "phone" | "submitting";
-
-const E164 = /^\+[1-9]\d{1,14}$/;
-
-// Strip whitespace, invisible bidi marks, parens, dashes, dots — keep only `+` and digits.
-const normalizePhone = (raw: string): string => raw.replace(/[^\d+]/g, "");
 
 export default function WelcomeWizard() {
 	const navigate = useNavigate();
@@ -45,7 +41,7 @@ export default function WelcomeWizard() {
 	const submitPhone = (e: React.FormEvent) => {
 		e.preventDefault();
 		const normalized = normalizePhone(phoneNumber);
-		if (!E164.test(normalized)) {
+		if (!E164_REGEX.test(normalized)) {
 			setShowError("Phone must be E.164 — include country code (e.g. +14155551234).");
 			return;
 		}

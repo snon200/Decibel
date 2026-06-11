@@ -31,10 +31,12 @@ export const listAgents = async (): Promise<Agent[]> => {
 export const updateAgent = async (input: {
 	id: string;
 	name?: string | undefined;
+	phoneNumber?: string | undefined;
 	description?: string | undefined;
 }): Promise<Agent> => {
 	const patch: Partial<NewAgent> = {};
 	if (input.name !== undefined) patch.name = input.name;
+	if (input.phoneNumber !== undefined) patch.phoneNumber = input.phoneNumber;
 	if (input.description !== undefined) patch.description = input.description;
 	const [row] = await db
 		.update(agents)

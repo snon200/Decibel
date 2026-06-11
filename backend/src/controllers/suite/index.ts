@@ -22,7 +22,7 @@ const runTargetSchema = z
 		z.object({ kind: z.literal("user_bot") }),
 		z.object({
 			kind: z.literal("competitor"),
-			competitorId: z.string().uuid(),
+			platform: z.enum(["vapi", "elevenlabs"]),
 		}),
 	])
 	.default({ kind: "user_bot" });

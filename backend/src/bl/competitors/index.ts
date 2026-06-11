@@ -1,10 +1,13 @@
-import * as CompetitorsDal from "../../dal/competitors.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { logger } from "../../lib/logger.ts";
-import type { Competitor } from "../../database/schemas/competitors.ts";
+export {
+	COMPETITOR_PLATFORMS,
+	COMPETITOR_LABELS,
+	isCompetitorPlatform,
+	resolveCompetitorTarget,
+} from "./resolveCompetitorTarget.ts";
+export type { CompetitorPlatform } from "./resolveCompetitorTarget.ts";
 
-export { provisionCompetitor } from "./provisionCompetitor.ts";
-export type { CompetitorPlatform } from "./provisionCompetitor.ts";
+export { buildSimulationPrompt } from "./buildSimulationPrompt.ts";
+
 export { compareScores } from "./compareScores.ts";
 export type {
 	Comparison,
@@ -13,21 +16,13 @@ export type {
 	SideAggregate,
 } from "./compareScores.ts";
 
-export const listCompetitors = (input: {
-	agentId: string;
-}): Promise<Competitor[]> => {
-	return CompetitorsDal.listCompetitorsForAgent({ agentId: input.agentId });
-};
+import {
+	COMPETITOR_PLATFORMS,
+	COMPETITOR_LABELS,
+} from "./resolveCompetitorTarget.ts";
 
-/** Soft-delete a competitor so it drops out of listings and future suite runs. */
-export const teardownCompetitor = async (input: {
-	id: string;
-}): Promise<void> => {
-	const competitor = await CompetitorsDal.getCompetitor({ id: input.id });
-	if (!competitor) throw new NotFoundError("Competitor");
-	await CompetitorsDal.softDeleteCompetitor({ id: input.id });
-	logger.info("competitor torn down", {
-		competitorId: input.id,
-		platform: competitor.platform,
-	});
-};
+export const listAvailablePlatforms = () =>
+	COMPETITOR_PLATFORMS.map((platform) => ({
+		platform,
+		label: COMPETITOR_LABELS[platform],
+	}));

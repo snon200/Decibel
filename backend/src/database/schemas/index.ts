@@ -9,6 +9,3 @@ export type { Run, NewRun, TargetKind } from "./runs.ts";
 
 export { scores } from "./scores.ts";
 export type { Score, NewScore } from "./scores.ts";
-
-export { competitors } from "./competitors.ts";
-export type { Competitor, NewCompetitor } from "./competitors.ts";

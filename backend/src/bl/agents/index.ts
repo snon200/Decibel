@@ -89,6 +89,7 @@ export const listAgents = async (): Promise<Agent[]> => {
 export const updateAgent = async (input: {
 	id: string;
 	name?: string | undefined;
+	phoneNumber?: string | undefined;
 	description?: string | undefined;
 }): Promise<Agent> => {
 	const existing = await AgentsDal.getAgent({ id: input.id });

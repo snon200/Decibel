@@ -110,3 +110,22 @@ frontend/src/
   `bl/runs/ingestCallResult` → `bl/scoring/judge` → `dal/scores`.
 - **Reconcile a miss:** `jobs/reconcileRuns` → `providers/<vendor>.getCall` →
   `bl/runs/ingestCallResult`.
+
+## Reference implementations
+
+Lift wiring straight from the Dial playbooks repo
+(https://github.com/GetDial-AI/playbooks/tree/main) — don't reinvent.
+
+| Concern | Playbook to mirror |
+| --- | --- |
+| Dashboard + REST shell for outbound calls / SMS / events (Node) | `sms-and-voice/node-express` — same stack as us; the canonical starting point for `providers/dial` + `controllers/webhooks/dial`. |
+| Inbound webhook signature verification and event normalization | `sms-and-voice/node-express` (the webhook handler) + `sms-and-voice/python-fastapi` for cross-checking payload shapes. |
+| Tester-agent loop with transcript interrupts (the tester needs to react mid-call and hang up cleanly) | `self-hosted/openai-node` — call-control over the dial-sdk protocol focused on transcript-interrupt handling. |
+| Richer agent orchestration / tool-calling if the tester needs structured actions | `ai-agent/python-langchain` — tool-calling agent with inbox + transcript handling. |
+
+Judging-criteria implication for the architecture
+(https://getdial.ai/hackathon/my-agent-has-a-phone/criteria, criterion 2 — *technical
+execution & Dial depth*): the demo should exercise **multiple Dial capabilities**
+(outbound + inbound + events + transcripts), so keep `providers/dial` thick and use real
+events/webhooks rather than only polling. Polling stays as the reliability backstop, not
+the primary path.

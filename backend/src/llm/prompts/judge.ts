@@ -3,7 +3,12 @@ import type { CompleteOptions } from "../client.ts";
 import type { Criterion } from "../../database/schemas/tests.ts";
 import type { CorrelatedMessage } from "../../database/schemas/runs.ts";
 
-const SYSTEM = `You are an impartial judge scoring a recorded phone call between an AI tester and a voice bot under test. You will be shown the test's pass/fail criteria, the transcript of the call, and any SMS activity correlated to the call. Score each criterion independently.
+const SYSTEM = `You are an impartial judge scoring a recorded phone call between an AI TESTER and a BOT UNDER TEST. You will be shown the test's pass/fail criteria, the transcript of the call, and any SMS activity correlated to the call. Score each criterion independently.
+
+ROLES (critical — do not confuse them):
+- "AI TESTER" = the caller our platform spawned to run the test scenario.
+- "BOT UNDER TEST" = the agent being evaluated. The transcript turns labeled "BOT UNDER TEST" are its words.
+- Criteria are ALWAYS about the BOT UNDER TEST's behavior, unless a criterion explicitly refers to the caller/tester. When a criterion names the bot (e.g. "Riley greets the caller"), that name refers to the BOT UNDER TEST — match it to the "BOT UNDER TEST" turns. The word "caller" in a criterion refers to the AI TESTER.
 
 Output a JSON object with this exact shape:
 
@@ -43,6 +48,31 @@ export type JudgeOutput = z.infer<typeof JudgeOutputSchema>;
 
 const formatCriteria = (criteria: Criterion[]): string =>
 	criteria.map((c) => `- ${c.id}: ${c.text}`).join("\n");
+
+/**
+ * Dial labels our outbound tester as "Agent" and the answering bot-under-test
+ * as "User". Rewrite those labels to explicit roles so the judge can't invert
+ * who is who — the criteria are about the BOT UNDER TEST.
+ */
+const ROLE_LABELS: Record<string, string> = {
+	agent: "AI TESTER",
+	assistant: "AI TESTER",
+	caller: "AI TESTER",
+	tester: "AI TESTER",
+	user: "BOT UNDER TEST",
+	bot: "BOT UNDER TEST",
+};
+
+const relabelRoles = (transcript: string): string =>
+	transcript
+		.split(/\r?\n/)
+		.map((line) => {
+			const m = line.match(/^\s*([A-Za-z]+)\s*:\s*(.*)$/);
+			if (!m) return line;
+			const mapped = ROLE_LABELS[m[1]!.toLowerCase()];
+			return mapped ? `${mapped}: ${m[2]}` : line;
+		})
+		.join("\n");
 
 const formatSms = (messages: CorrelatedMessage[]): string => {
 	if (messages.length === 0) {
@@ -97,12 +127,12 @@ Call timing: ${formatTiming({
 Criteria (use these exact ids):
 ${formatCriteria(input.criteria)}
 
-Transcript:
+Transcript (each turn labeled AI TESTER or BOT UNDER TEST):
 """
-${input.transcript}
+${relabelRoles(input.transcript)}
 """
 
-SMS activity (inbound texts from the agent under test, correlated by number + time):
+SMS activity (texts sent by the BOT UNDER TEST, correlated by number + time):
 ${formatSms(input.messages ?? [])}`,
 	temperature: 0.1,
 	maxTokens: 2048,

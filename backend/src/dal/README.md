@@ -6,11 +6,14 @@ vendor calls.** Just typed CRUD that the `bl/` layer composes.
 ## Files (one per table)
 
 - `agents.ts` — `createAgent`, `getAgent`, `listAgents`, `updateAgent`.
-- `tests.ts` — `createTest`, `getTest`, `listTestsForAgent`, `setTesterInstruction`.
+- `tests.ts` — `bulkCreateTests` (suite generation writes many at once), `getTest`,
+  `listTestsForAgent`, `updateTest`, `replaceSuiteForAgent`.
 - `runs.ts` — `createRun`, `getRun`, `getRunByExternalCallId`, `updateRunStatus`,
-  `setRunResult`, `listStaleRuns` (for the reconciler).
+  `setRunResult` (transcript + `audio_url` + duration), `listStaleRuns` (for the
+  reconciler).
 - `scores.ts` — `insertScores`, `getScoresForRun`.
-- `benchmarks.ts` — `createBenchmark`, `getBenchmarkWithRuns`.
+- `competitors.ts` — `createCompetitor`, `getCompetitor`, `listCompetitorsForAgent`,
+  `softDeleteCompetitor`.
 
 ## Rules
 

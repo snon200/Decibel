@@ -5,11 +5,12 @@ Routed top-level views — one component per screen. Pages compose components fr
 
 ## Pages
 
-- `AgentsPage.tsx` — list Agents Under Test + create a new one.
-- `AgentDetailPage.tsx` — one AUT: its prompt, its tests, and a button to author/run a test.
-- `TestRunPage.tsx` — author a test (intent + criteria), generate/edit the tester prompt,
-  run it, and watch live status → transcript → scorecard.
-- `BenchmarkPage.tsx` — configure + view "Us vs competitors": same test across
-  Dial/VAPI/ElevenLabs with a side-by-side scorecard.
+- `AgentsPage.tsx` — list Agents Under Test + register a new one (phone + description).
+- `AgentDetailPage.tsx` — one AUT: its description, its generated suite, run-suite
+  button, and recent run history. Editing the description offers "regenerate suite."
+- `RunDetailPage.tsx` — one finished run: status, transcript, audio player, scorecard
+  with per-criterion justifications.
+- `ComparisonPage.tsx` — "test the competitors": provision a competitor, run the suite
+  against it, view a side-by-side scorecard vs the user's bot.
 
 Built from scratch with Material UI; use `<Box>` and `sx`, no raw `<div>`.

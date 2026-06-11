@@ -1,18 +1,17 @@
 # bl/agents/
 
-Manage **Agents Under Test (AUT)**.
+Register **Agents Under Test (AUT)**. An agent is identified by **(a) a phone number we
+dial** and **(b) a free-text description** of what it does — that's all the user gives us.
+We never see the user's bot's prompt, deployment, or platform.
 
 ## Files
 
-- `createAgent.ts` — persist the agent, then bind it to its platform:
-  - **dial** — `providers/dial` purchases a number (or attaches an existing one) and sets
-    `inboundInstruction` to the agent's `system_prompt`; store the number id + phone in
-    `external_ref`.
-  - **vapi** — store the prompt as a transient-assistant config (no provisioning needed at
-    create time; the prompt is sent per call).
-  - **elevenlabs** — reference an existing `agent_id` + `agent_phone_number_id`.
-- `updateAgentPrompt.ts` — update `system_prompt` and propagate (e.g. re-`PATCH` the Dial
-  number's `inboundInstruction`).
-- `getAgent.ts` / `listAgents.ts` — read helpers.
+- `createAgent.ts` — validate + persist `{ name, phone_number, description }`. Then
+  trigger `bl/suite.generateFromDescription` so the user lands on a ready-to-run suite.
+- `updateAgentDescription.ts` — change the description; offer a "regenerate suite"
+  follow-up so the tests stay aligned with the bot's purpose.
+- `getAgent.ts` / `listAgents.ts` — read helpers; `getAgent` includes a suite summary
+  (test count, last-run status) for the agent-detail page.
 
-The AUT's phone number is what the tester dials.
+The phone number is the only thing the tester dials. We do not provision it, validate
+ownership, or care which platform sits behind it.

@@ -23,6 +23,10 @@ const envSchema = z.object({
 	ELEVENLABS_AGENT_ID: z.string().optional(),
 	ELEVENLABS_PHONE_NUMBER_ID: z.string().optional(),
 	ELEVENLABS_WEBHOOK_SECRET: z.string().optional(),
+
+	OPENAI_API_KEY: z.string().optional(),
+	OPENAI_MODEL: z.string().default("gpt-4o"),
+
 });
 
 export const config = envSchema.parse(process.env);

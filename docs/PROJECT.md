@@ -173,6 +173,22 @@ Uses the existing repo skeleton:
 
 ---
 
+## Judging criteria & how Agent Arena hits them
+
+Full rubric: https://getdial.ai/hackathon/my-agent-has-a-phone/criteria.
+Three criteria, 10 points each (30 total), averaged across judges. Scale: 1–3 weak · 4–6 fine · 7–8 strong · 9–10 exceptional.
+
+| # | Criterion | How Agent Arena scores |
+| --- | --- | --- |
+| 1 | **Real-World Impact & Market Potential** — "would this exist as a company?" | Every voice-agent builder hits the same wall today: testing is manual and unrepeatable. Agent Arena is a paid eval tool for an audience that's growing fast (voice infra, CX teams, agent platforms). Phone is the *product surface*, not a gimmick — we can't deliver this without a real PSTN call. |
+| 2 | **Technical Execution & Dial Integration** — "depth over presence" | Dial is the runtime spine: outbound calls (tester), inbound numbers (AUTs), `call.ended` / `call.transcribed` event handling, and transcript retrieval via the REST API — orchestrated end-to-end and judged live during the demo. Not a one-shot API call. |
+| 3 | **Innovation & Phone-Native Creativity** — "impressive without the phone?" | The whole concept *requires* programmable telephony: two AI agents talking to each other on a real phone call, with a third AI judging the recording. Strip away the phone and it's just LLM-on-LLM text — interesting, but the voice/ASR/TTS/latency loop is exactly what makes voice agents hard to evaluate. |
+
+Action items the rubric implies:
+- Use **multiple Dial capabilities** in the demo (inbound + outbound + events + transcripts), not just `POST /calls`.
+- Be ready to **demo live** — the rubric explicitly rewards "working live under demo conditions." Keep a known-good AUT + test ready to run on stage.
+- Pitch the **"who pays"** clearly: voice-agent teams running CI against their bots before deploys.
+
 ## Open questions / risks
 
 - **Two AI agents on one call.** Need to confirm tester↔AUT call quality and that the
@@ -190,10 +206,19 @@ Uses the existing repo skeleton:
 ## References
 
 - **Hackathon home base** — https://getdial.ai/hackathon/my-agent-has-a-phone
-  (schedule, submission, rules, showcase, judging rubric).
+  (schedule, submission, rules, showcase).
+- **Judging criteria** — https://getdial.ai/hackathon/my-agent-has-a-phone/criteria
+  (3 criteria × 10 pts; impact, technical execution + Dial depth, phone-native innovation).
 - **Dial docs** — https://docs.getdial.ai/documentation/get-started/introduction
   (API, SDK, CLI, quickstart).
-- **Playbooks** — https://github.com/GetDial-AI/playbooks
-  (runnable reference builds: FastAPI, Node/Express, LangChain, self-hosted).
+- **Playbooks** — https://github.com/GetDial-AI/playbooks/tree/main — runnable reference
+  builds we can crib from:
+    - `sms-and-voice/node-express` — closest match to our stack: Node/Express dashboard for
+      placing voice calls, sending SMS, streaming inbound events. **Primary reference.**
+    - `sms-and-voice/python-fastapi` — same shape, FastAPI version.
+    - `self-hosted/openai-node` and `self-hosted/openai-python` — call control via the
+      OpenAI SDK with transcript-interrupt handling; useful for the tester-agent loop.
+    - `ai-agent/python-langchain` — tool-calling agent with inbox + transcript handling;
+      reference for richer agent orchestration if we need it.
 - **Support** — if you hit a bug, post in the hackathon `#support` channel; ~10 agents
   monitor it and fix issues proactively.

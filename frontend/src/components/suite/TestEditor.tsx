@@ -22,10 +22,7 @@ export default function TestEditor({
 	const submit = (e: React.FormEvent) => {
 		e.preventDefault();
 		update.mutate(
-			{
-				id: test.id,
-				patch: { name, scenarioSummary, testerInstruction, criteria },
-			},
+			{ id: test.id, patch: { name, scenarioSummary, testerInstruction, criteria } },
 			{ onSuccess: onClose },
 		);
 	};
@@ -35,9 +32,7 @@ export default function TestEditor({
 			<Modal onClick={(e) => e.stopPropagation()} onSubmit={submit}>
 				<Header>
 					<Title>Edit test</Title>
-					<CloseBtn type="button" onClick={onClose} aria-label="Close">
-						×
-					</CloseBtn>
+					<CloseBtn type="button" onClick={onClose} aria-label="Close">×</CloseBtn>
 				</Header>
 
 				<Field>
@@ -68,17 +63,13 @@ export default function TestEditor({
 					<CriteriaEditor criteria={criteria} onChange={setCriteria} />
 				</Field>
 
-				{update.error && (
-					<ErrorText>{(update.error as Error).message}</ErrorText>
-				)}
+				{update.error && <ErrorText>{(update.error as Error).message}</ErrorText>}
 
 				<Footer>
+					<Cancel type="button" onClick={onClose}>Cancel</Cancel>
 					<Save type="submit" disabled={update.isPending}>
 						{update.isPending ? "Saving…" : "Save"}
 					</Save>
-					<Cancel type="button" onClick={onClose}>
-						Cancel
-					</Cancel>
 				</Footer>
 			</Modal>
 		</Backdrop>
@@ -88,24 +79,28 @@ export default function TestEditor({
 const Backdrop = styled.div`
 	position: fixed;
 	inset: 0;
-	background: rgba(15, 23, 42, 0.5);
+	background: rgba(0, 0, 0, 0.65);
+	backdrop-filter: blur(6px);
 	display: flex;
 	align-items: flex-start;
 	justify-content: center;
 	padding: 64px 24px 24px;
 	z-index: 50;
 	overflow-y: auto;
+	animation: fadeIn 0.2s var(--ease-out);
 `;
 
 const Modal = styled.form`
-	background: white;
-	border-radius: 8px;
+	background: var(--bg-elev);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
 	padding: 24px;
 	width: 100%;
 	max-width: 720px;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+	animation: fadeInUp 0.3s var(--ease-out);
 `;
 
 const Header = styled.div`
@@ -116,47 +111,46 @@ const Header = styled.div`
 
 const Title = styled.h2`
 	margin: 0;
-	font-size: 1.2rem;
+	font-size: 1.15rem;
+	font-weight: 600;
+	letter-spacing: -0.02em;
 `;
 
 const CloseBtn = styled.button`
 	background: none;
 	border: none;
 	font-size: 1.4rem;
-	color: #6b7280;
+	color: var(--text-muted);
 	cursor: pointer;
-	&:hover {
-		color: #1f2937;
-	}
+	&:hover { color: var(--text); }
 `;
 
 const Field = styled.div`
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 `;
 
 const Label = styled.label`
-	font-size: 0.85rem;
+	font-size: 0.82rem;
 	font-weight: 500;
-	color: #374151;
+	color: var(--text-muted);
 `;
 
-const Input = styled.input`
-	padding: 8px 10px;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
+const inputCss = `
+	background: var(--surface);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 10px 12px;
 	font-size: 0.95rem;
+	font-family: inherit;
+	transition: border-color 0.15s;
+	&:focus { outline: none; border-color: var(--accent); }
 `;
 
-const Textarea = styled.textarea`
-	padding: 8px 10px;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
-	font-size: 0.9rem;
-	font-family: inherit;
-	resize: vertical;
-`;
+const Input = styled.input`${inputCss}`;
+const Textarea = styled.textarea`${inputCss} resize: vertical;`;
 
 const Footer = styled.div`
 	display: flex;
@@ -165,28 +159,30 @@ const Footer = styled.div`
 `;
 
 const Save = styled.button`
-	background: #2563eb;
+	background: linear-gradient(180deg, var(--accent-bright), var(--accent));
 	color: white;
 	border: none;
-	border-radius: 6px;
-	padding: 8px 16px;
+	border-radius: 999px;
+	padding: 8px 18px;
+	font-size: 0.9rem;
+	font-weight: 500;
 	cursor: pointer;
-	&:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+	box-shadow: 0 4px 12px -4px var(--accent-glow);
+	&:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const Cancel = styled.button`
-	background: white;
-	color: #374151;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
-	padding: 8px 16px;
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 8px 18px;
 	cursor: pointer;
+	&:hover { color: var(--text); border-color: var(--border-strong); }
 `;
 
 const ErrorText = styled.p`
-	color: #c0392b;
+	color: var(--danger);
 	margin: 0;
+	font-size: 0.9rem;
 `;

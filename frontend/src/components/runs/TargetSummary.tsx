@@ -13,27 +13,30 @@ export default function TargetSummary({ run }: { run: Run }) {
 }
 
 const Wrap = styled.div`
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 12px;
-	color: #4b5563;
-	font-size: 0.9rem;
+	gap: 10px;
+	color: var(--text-muted);
+	font-size: 0.85rem;
 `;
 
 const Chip = styled.span`
-	background: #eef2ff;
-	color: #3730a3;
+	background: rgba(139, 92, 246, 0.14);
+	color: var(--accent-bright);
+	border: 1px solid rgba(139, 92, 246, 0.32);
 	padding: 2px 8px;
-	border-radius: 4px;
+	border-radius: 999px;
 	font-weight: 500;
-	font-size: 0.8rem;
+	font-size: 0.72rem;
+	letter-spacing: 0.02em;
 `;
 
 const Label = styled.span`
+	color: var(--text);
 	font-weight: 500;
 `;
 
 const Phone = styled.span`
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	color: #6b7280;
+	font-family: var(--font-mono);
+	color: var(--text-dim);
 `;

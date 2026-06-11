@@ -15,10 +15,7 @@ export default function CriteriaEditor({
 		next[i] = { ...current, ...patch };
 		onChange(next);
 	};
-	const remove = (i: number) => {
-		const next = criteria.filter((_, idx) => idx !== i);
-		onChange(next);
-	};
+	const remove = (i: number) => onChange(criteria.filter((_, idx) => idx !== i));
 	const add = () => {
 		const slug = `criterion-${criteria.length + 1}`;
 		onChange([...criteria, { id: slug, text: "" }]);
@@ -56,49 +53,61 @@ const Wrap = styled.div`
 
 const Row = styled.div`
 	display: grid;
-	grid-template-columns: 180px 1fr 32px;
+	grid-template-columns: 200px 1fr 32px;
 	gap: 8px;
 	align-items: center;
 `;
 
+const fieldStyle = `
+	padding: 8px 10px;
+	background: var(--bg-elev);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	transition: border-color 0.15s;
+	&:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+`;
+
 const SlugInput = styled.input`
-	padding: 6px 8px;
-	border: 1px solid #d1d5db;
-	border-radius: 4px;
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	${fieldStyle}
+	font-family: var(--font-mono);
 	font-size: 0.8rem;
 `;
 
 const TextInput = styled.input`
-	padding: 6px 8px;
-	border: 1px solid #d1d5db;
-	border-radius: 4px;
+	${fieldStyle}
 	font-size: 0.9rem;
 `;
 
 const RemoveBtn = styled.button`
-	background: white;
-	border: 1px solid #d1d5db;
-	border-radius: 4px;
+	background: transparent;
+	border: 1px solid var(--border);
+	border-radius: 6px;
 	width: 32px;
 	height: 32px;
 	cursor: pointer;
 	font-size: 1.1rem;
-	color: #991b1b;
+	color: var(--danger);
 	&:hover {
-		background: #fecaca;
+		background: rgba(248, 113, 113, 0.12);
+		border-color: var(--danger);
 	}
 `;
 
 const AddBtn = styled.button`
 	align-self: flex-start;
-	background: white;
-	border: 1px dashed #9ca3af;
-	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px dashed var(--border-strong);
+	border-radius: 6px;
 	padding: 6px 12px;
 	font-size: 0.85rem;
 	cursor: pointer;
 	&:hover {
-		background: #f9fafb;
+		color: var(--text);
+		border-color: var(--accent);
 	}
 `;

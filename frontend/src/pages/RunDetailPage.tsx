@@ -12,9 +12,9 @@ export default function RunDetailPage() {
 	const { runId } = useParams();
 	const { data, isLoading, error } = useRun(runId);
 
-	if (isLoading) return <p>Loading run…</p>;
-	if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
-	if (!data) return <p>Run not found.</p>;
+	if (isLoading) return <Status>Loading run…</Status>;
+	if (error) return <Status $danger>{(error as Error).message}</Status>;
+	if (!data) return <Status>Run not found.</Status>;
 
 	const { run, test, scores, audioUrl } = data;
 	const live = !isTerminal(run.status);
@@ -33,6 +33,7 @@ export default function RunDetailPage() {
 
 			{live && (
 				<LiveBanner>
+					<Pulse />
 					Call in progress — transcript and scorecard update automatically.
 				</LiveBanner>
 			)}
@@ -62,9 +63,14 @@ export default function RunDetailPage() {
 }
 
 const Wrap = styled.div`
+	padding: 32px;
+	max-width: 1000px;
+	margin: 0 auto;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: 24px;
+	animation: fadeIn 0.3s var(--ease-out);
 `;
 
 const TopRow = styled.div`
@@ -74,46 +80,71 @@ const TopRow = styled.div`
 `;
 
 const BackLink = styled(Link)`
-	color: #2563eb;
+	color: var(--text-muted);
 	text-decoration: none;
 	font-size: 0.9rem;
+	transition: color 0.15s;
 	&:hover {
-		text-decoration: underline;
+		color: var(--accent-bright);
 	}
 `;
 
 const Header = styled.header`
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 10px;
 `;
 
 const TestName = styled.h1`
 	margin: 0;
-	font-size: 1.5rem;
+	font-size: 1.7rem;
+	font-weight: 600;
+	letter-spacing: -0.025em;
 `;
 
 const LiveBanner = styled.div`
-	background: #dbeafe;
-	color: #1e40af;
-	border-radius: 6px;
-	padding: 8px 12px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: rgba(96, 165, 250, 0.10);
+	color: var(--info);
+	border: 1px solid rgba(96, 165, 250, 0.3);
+	border-radius: var(--radius);
+	padding: 10px 14px;
 	font-size: 0.9rem;
+`;
+
+const Pulse = styled.span`
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--info);
+	box-shadow: 0 0 12px var(--info);
+	animation: glowPulse 1.6s ease-in-out infinite;
 `;
 
 const Section = styled.section`
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 10px;
 `;
 
 const SectionTitle = styled.h2`
 	margin: 0;
-	font-size: 1rem;
-	color: #374151;
+	font-size: 0.92rem;
+	font-weight: 500;
+	color: var(--text-muted);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
 `;
 
 const ErrorText = styled.p`
-	color: #c0392b;
+	color: var(--danger);
 	margin: 0;
+`;
+
+const Status = styled.p<{ $danger?: boolean }>`
+	padding: 60px 32px;
+	text-align: center;
+	color: ${(p) => (p.$danger ? "var(--danger)" : "var(--text-muted)")};
 `;

@@ -1,17 +1,14 @@
 import { placeElevenCall } from "./placeCall.ts";
 import { getElevenCall } from "./getCall.ts";
 import { getElevenRecordingUrl } from "./getRecording.ts";
-import { parseElevenWebhookEvent, verifyElevenWebhook } from "./webhook.ts";
 import { configureElevenInbound, listElevenNumbers } from "./numbers.ts";
 import { VoiceProvider } from "../types.ts";
 import type {
 	ConfigureInboundInput,
 	NormalizedCall,
-	NormalizedCallEvent,
 	NormalizedNumber,
 	PlaceCallInput,
 	ProviderName,
-	WebhookInput,
 } from "../types.ts";
 
 export class ElevenLabsProvider extends VoiceProvider {
@@ -27,14 +24,6 @@ export class ElevenLabsProvider extends VoiceProvider {
 
 	getRecordingUrl(input: { externalCallId: string }): Promise<string | null> {
 		return getElevenRecordingUrl(input);
-	}
-
-	verifyWebhook(input: WebhookInput): boolean {
-		return verifyElevenWebhook(input);
-	}
-
-	parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null {
-		return parseElevenWebhookEvent(input);
 	}
 
 	listNumbers(): Promise<NormalizedNumber[]> {

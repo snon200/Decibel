@@ -49,7 +49,7 @@ export const placeElevenCall = async (
 	}
 
 	// The outbound response carries no call detail; return an initial snapshot
-	// and let the Run converge via polling/webhooks like the other providers.
+	// and let the Run converge via polling like the other providers.
 	return {
 		externalCallId: result.conversation_id,
 		status: "queued",

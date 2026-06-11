@@ -1,17 +1,14 @@
 import { placeDialCall } from "./placeCall.ts";
 import { getDialCall } from "./getCall.ts";
 import { getDialRecordingUrl } from "./getRecording.ts";
-import { parseDialWebhookEvent, verifyDialWebhook } from "./webhook.ts";
 import { configureDialInbound, listDialNumbers } from "./numbers.ts";
 import { VoiceProvider } from "../types.ts";
 import type {
 	ConfigureInboundInput,
 	NormalizedCall,
-	NormalizedCallEvent,
 	NormalizedNumber,
 	PlaceCallInput,
 	ProviderName,
-	WebhookInput,
 } from "../types.ts";
 
 export class DialProvider extends VoiceProvider {
@@ -27,14 +24,6 @@ export class DialProvider extends VoiceProvider {
 
 	getRecordingUrl(input: { externalCallId: string }): Promise<string | null> {
 		return getDialRecordingUrl(input);
-	}
-
-	verifyWebhook(input: WebhookInput): boolean {
-		return verifyDialWebhook(input);
-	}
-
-	parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null {
-		return parseDialWebhookEvent(input);
 	}
 
 	listNumbers(): Promise<NormalizedNumber[]> {

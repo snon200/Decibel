@@ -13,15 +13,10 @@ export const placeVapiCall = async (
 		throw new Error("VAPI requires a phoneNumberId (set VAPI_PHONE_NUMBER_ID)");
 	}
 
-	const assistantInput: { systemPrompt: string; webhookUrl?: string } = {
-		systemPrompt: input.systemPrompt,
-	};
-	if (input.webhookUrl) assistantInput.webhookUrl = input.webhookUrl;
-
 	const body = {
 		phoneNumberId,
 		customer: { number: input.to },
-		assistant: buildVapiAssistant(assistantInput),
+		assistant: buildVapiAssistant({ systemPrompt: input.systemPrompt }),
 	};
 
 	const call = await vapiRequest<VapiCall>({

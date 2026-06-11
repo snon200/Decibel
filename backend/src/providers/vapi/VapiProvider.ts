@@ -1,17 +1,14 @@
 import { placeVapiCall } from "./placeCall.ts";
 import { getVapiCall } from "./getCall.ts";
 import { getVapiRecordingUrl } from "./getRecording.ts";
-import { parseVapiWebhookEvent, verifyVapiWebhook } from "./webhook.ts";
 import { configureVapiInbound, listVapiNumbers } from "./numbers.ts";
 import { VoiceProvider } from "../types.ts";
 import type {
 	ConfigureInboundInput,
 	NormalizedCall,
-	NormalizedCallEvent,
 	NormalizedNumber,
 	PlaceCallInput,
 	ProviderName,
-	WebhookInput,
 } from "../types.ts";
 
 export class VapiProvider extends VoiceProvider {
@@ -27,14 +24,6 @@ export class VapiProvider extends VoiceProvider {
 
 	getRecordingUrl(input: { externalCallId: string }): Promise<string | null> {
 		return getVapiRecordingUrl(input);
-	}
-
-	verifyWebhook(input: WebhookInput): boolean {
-		return verifyVapiWebhook(input);
-	}
-
-	parseWebhookEvent(input: WebhookInput): NormalizedCallEvent | null {
-		return parseVapiWebhookEvent(input);
 	}
 
 	listNumbers(): Promise<NormalizedNumber[]> {

@@ -4,12 +4,7 @@ import { logger } from "../../lib/logger.ts";
 import { getProvider } from "../../providers/registry.ts";
 import { rehydrate, toUpdate, isTerminalString } from "./runAdapter.ts";
 import { judgeAndPersist } from "./judgeAndPersist.ts";
-import type {
-	NormalizedCall,
-	NormalizedCallEvent,
-	PlaceCallInput,
-	ProviderName,
-} from "../../providers/types.ts";
+import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
 
 const buildPlaceCallStub = (): PlaceCallInput => ({
 	// Rehydrate doesn't reach back through the provider for placeCall, but the
@@ -19,16 +14,19 @@ const buildPlaceCallStub = (): PlaceCallInput => ({
 	systemPrompt: "",
 });
 
+/**
+ * Poll a single in-flight run: re-read its call from the provider, persist the
+ * canonical state, and kick off judging once it lands transcribed + terminal.
+ * Driven by the reconcile poller — there is no webhook path.
+ */
 export const ingestCallResult = async (input: {
 	externalCallId: string;
-	event?: NormalizedCallEvent;
-	snapshot?: NormalizedCall;
 }): Promise<void> => {
 	const runRow = await RunsDal.getRunByExternalCallId({
 		externalCallId: input.externalCallId,
 	});
 	if (!runRow) {
-		logger.warn("ingestCallResult: orphan event", {
+		logger.warn("ingestCallResult: orphan call", {
 			externalCallId: input.externalCallId,
 		});
 		return;
@@ -43,10 +41,7 @@ export const ingestCallResult = async (input: {
 	const provider = getProvider(runRow.provider as ProviderName);
 	const run = rehydrate({ runRow, provider, input: buildPlaceCallStub() });
 
-	if (input.event) run.applyEvent(input.event);
-
-	// Always refresh from the provider for the canonical snapshot (status,
-	// duration, transcript). Webhooks are thin; refresh gives us everything.
+	// Read the canonical snapshot from the provider (status, duration, transcript).
 	try {
 		await run.refresh();
 	} catch (err) {

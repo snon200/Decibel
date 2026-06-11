@@ -17,5 +17,6 @@ The **judge**: score a finished call's transcript against the test's criteria us
 - Deterministic output shape: force JSON, validate with Zod, retry once on parse failure.
 - Every verdict carries a `justification` quoting the transcript so the dashboard can show
   *why* — evidence, not just a number.
-- The judge is provider-agnostic: it scores a plain transcript, so Dial/VAPI/ElevenLabs
-  runs are judged identically (fair benchmark).
+- The judge is **target-blind**: it scores a plain transcript without knowing whether the
+  call hit the user's bot or a simulated competitor, so the side-by-side comparison stays
+  fair.

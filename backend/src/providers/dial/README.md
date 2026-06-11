@@ -1,33 +1,24 @@
 # providers/dial/
 
-Adapter for **Dial** — our primary platform and the one the Agent Under Test runs on.
+Adapter for **Dial** — the one and only `CallProvider`. Every test run goes out through
+this adapter, whether the target is the user's bot or a provisioned competitor.
 
 Auth: `Authorization: Bearer sk_live_...`. Base URL: `https://getdial.ai`.
 
 ## What this adapter does
 
-- **`placeCall`** — `POST /api/v1/calls` with `{ to, fromNumberId, outboundInstruction, language }`.
-  Sends an `Idempotency-Key` header so a retry never double-dials. Returns the call `id` as
-  `externalCallId`.
-- **`getCall`** — `GET /api/v1/calls/{id}` → map `{ status, duration, transcript }` to
-  `NormalizedCall`. Used by the reconciliation poller.
+- **`placeCall`** — `POST /api/v1/calls` with `{ to, fromNumberId, outboundInstruction,
+  language }`. Sends an `Idempotency-Key` header so a retry never double-dials. Returns
+  the call `id` as `externalCallId`.
+- **`getCall`** — `GET /api/v1/calls/{id}` → map `{ status, duration, transcript,
+  recordingUrl }` to `NormalizedCall` (transcript turns + `audioUrl`). Used by the
+  reconciliation poller and to pull the audio URL for the dashboard player.
 - **`verifyWebhook`** — recompute HMAC-SHA256 over `{t}.{rawBody}` using the subscription
   secret (`whsec_…`), compare against `X-Dial-Signature` (`t=…,v1=…`), reject if older
   than 5 min.
 - **`parseWebhookEvent`** — handle `call.ended` (terminal status, duration) and
   `call.transcribed` (transcript ready). Dedupe on `X-Dial-Event-ID`. `call.transcribed`
-  is thin, so fetch the transcript via `getCall`.
-
-## Number management (for setting up an AUT)
-
-A Dial Agent Under Test *is* a phone number with an `inboundInstruction`. Helpers here also
-cover:
-
-- `POST /api/v1/numbers` — purchase a number (optional `inboundInstruction`, `country`, `areaCode`).
-- `PATCH /api/v1/numbers/{id}` — set/update `inboundInstruction` and `nickname`.
-- `GET /api/v1/numbers` — list numbers.
-
-(These may live in a small `numbers.ts` alongside the call files since they're Dial-specific.)
+  is thin, so fetch the transcript + audio via `getCall`.
 
 ## Notes
 
@@ -35,4 +26,8 @@ cover:
   boundary stays the same.
 - Webhooks are at-least-once with up to 6 delivery attempts — our handler must be
   idempotent. The event stream / `wait-for` long-poll exist too, but we standardize on
-  **webhook + `getCall` polling** to stay socket-free and uniform across vendors.
+  **webhook + `getCall` polling** to stay socket-free.
+- We do **not** provision Dial numbers for the AUT in the MVP flow — the user brings
+  their own number on whatever platform. Number-management helpers (`POST /api/v1/numbers`,
+  `PATCH /api/v1/numbers/{id}`) may land here later if we add a "host an AUT on Dial"
+  mode, but they aren't part of `CallProvider`.

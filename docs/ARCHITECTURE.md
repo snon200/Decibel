@@ -17,8 +17,8 @@ How **Agent Arena** is wired. See [`PROJECT.md`](./PROJECT.md) for the product v
 
 ```
  ┌────────────┐   1. POST start call    ┌──────────────────────┐
- │  bl/runs   │ ──────────────────────► │  providers/<vendor>  │ ──► vendor REST API
- │ startRun   │   { externalCallId }    │  placeCall()         │
+ │  bl/runs   │ ──────────────────────► │   providers/dial     │ ──► POST /api/v1/calls
+ │ startRun   │   { externalCallId }    │   placeCall()        │
  └────────────┘ ◄────────────────────── └──────────────────────┘
        │  run = "dialing"
        │
@@ -28,7 +28,8 @@ How **Agent Arena** is wired. See [`PROJECT.md`](./PROJECT.md) for the product v
        ▼                                     ▼
  ┌──────────────────────────┐         ┌──────────────────────────┐
  │ controllers/webhooks/    │         │ jobs/reconcileRuns       │
- │ verify sig → normalize   │         │ sweep stale runs → GET   │
+ │ dial — verify sig →      │         │ sweep stale runs →       │
+ │ normalize event          │         │ providers/dial.getCall   │
  └──────────────────────────┘         └──────────────────────────┘
        │                                     │
        └──────────────┬──────────────────────┘
@@ -46,54 +47,105 @@ How **Agent Arena** is wired. See [`PROJECT.md`](./PROJECT.md) for the product v
 URL and can be missed if our server is briefly down. Polling guarantees we eventually
 reconcile every run. The webhook makes it fast; the poller makes it reliable.
 
-## Provider abstraction
+## Two provider interfaces
 
-Every vendor adapter under `backend/src/providers/<vendor>/` implements the same shape:
+The product has **one outbound-call mechanism** (Dial) and **N optional competitor
+platforms** (ElevenLabs, OpenAI, etc.). Don't conflate them — they serve different
+concerns and have different shapes.
+
+### `CallProvider` — placing outbound calls
+
+Only `providers/dial` implements this. Every test run dials *some* phone number from our
+Dial tester number — whether the number belongs to the user's bot or to a competitor we
+provisioned, the call mechanism is the same.
 
 ```ts
-interface VoiceProvider {
+interface CallProvider {
   placeCall(input: PlaceCallInput): Promise<{ externalCallId: string }>;
   getCall(externalCallId: string): Promise<NormalizedCall>;   // polling fallback
   verifyWebhook(raw: string, headers: Headers): boolean;       // HMAC check
   parseWebhookEvent(raw: string, headers: Headers): NormalizedCallEvent | null;
 }
+
+interface NormalizedCall {
+  externalCallId: string;
+  status: "in_progress" | "completed" | "failed";
+  transcript: TranscriptTurn[] | null;
+  audioUrl: string | null;
+  durationSeconds: number | null;
+}
 ```
 
-`NormalizedCall` / `NormalizedCallEvent` flatten each vendor's payload into one internal
-shape (`status`, `transcript`, `durationSeconds`, `externalCallId`). The rest of the
-backend only ever sees normalized data.
+`audioUrl` is what the dashboard's recording player loads. `NormalizedCallEvent` is the
+same shape but partial — webhook events may carry only a status change without the
+transcript yet.
 
-### Per-vendor mapping (all REST, no sockets)
+### `CompetitorProvider` — provisioning a phone-reachable simulated bot (stretch)
 
-| | Start call | Result webhook | Poll fallback |
+One adapter per competitor platform under `providers/<vendor>/`. Different shape — its
+job is to create an agent and surface a phone number we can dial:
+
+```ts
+interface CompetitorProvider {
+  provisionAgent(input: {
+    systemPrompt: string;    // generated from the AUT description
+    voice?: string;
+    language?: string;
+  }): Promise<{ externalAgentId: string; phoneNumber: string }>;
+
+  deleteAgent(externalAgentId: string): Promise<void>;
+}
+```
+
+Once provisioned, a competitor is just another phone number in the `competitors` table.
+The run path goes through `CallProvider.placeCall` → that number, *exactly* like a user-
+bot run. The competitor adapter is **never on the critical call path**.
+
+### Per-vendor mapping
+
+| Vendor | Role | Endpoint(s) | Webhook / event |
 |---|---|---|---|
-| **Dial** | `POST /api/v1/calls` | `call.ended`, `call.transcribed` | `GET /api/v1/calls/{id}` |
-| **VAPI** | `POST /call` (`serverUrl`, `serverMessages`) | `end-of-call-report` | `GET /call/{id}` |
-| **ElevenLabs** | `POST /v1/convai/twilio/outbound-call` | `post_call_transcription` | `GET /v1/convai/conversations/{id}` |
+| **Dial** | `CallProvider` (always) | `POST /api/v1/calls`, `GET /api/v1/calls/{id}` | `call.ended`, `call.transcribed` |
+| **ElevenLabs** | `CompetitorProvider` (stretch, primary) | `POST /v1/convai/agents`, `POST /v1/convai/agents/{id}/phone-numbers` | — (we don't listen to it; we just dial its number from Dial) |
+| **OpenAI** | `CompetitorProvider` (stretch, secondary) | Realtime API + Twilio bridge | — |
 
 ## Folder map
 
 ```
 backend/src/
   config/         env + typed config (API keys, base URLs, public webhook URL)
-  providers/      voice platform adapters (Dial / VAPI / ElevenLabs) — the only vendor code
+  providers/
+    dial/         CallProvider — outbound calls, events, transcripts (always on the path)
+    elevenlabs/   CompetitorProvider — provision a phone-reachable convai agent (stretch)
+    openai/       CompetitorProvider — provision via Realtime + bridge (stretch)
   database/
-    schemas/      Drizzle tables: agents, tests, runs, scores, benchmarks
+    schemas/      Drizzle tables: agents, tests, runs, scores, competitors
   dal/            data-access helpers, one file per table
   bl/             business logic, one subfolder per domain
-    agents/         manage Agents Under Test
-    tests/          test definitions + AI tester-prompt generation
-    runs/           start a run, ingest the call result
+    agents/         register an agent (phone + description)
+    suite/          LLM-generate the test suite from the description; regenerate; edit
+                    individual tests (renamed from bl/tests/)
+    runs/           start a run (per test, per target), ingest the call result
     scoring/        LLM judge: score transcript vs criteria
-    benchmarks/     fan a test across providers + compare
-  llm/            LLM client + prompt builders (generation & judging)
+    competitors/    provision a simulated competitor on a public platform (stretch;
+                    renamed from bl/benchmarks/)
+  llm/            LLM client + prompt builders (suite generation, simulation prompts, judging)
   jobs/           background pollers (reconcile stale runs) — no sockets, just intervals
   controllers/    Express routers, one subfolder per domain
-    webhooks/       inbound webhook receivers for each provider
+    agents/         register agent endpoints
+    suite/          test/suite endpoints (renamed from controllers/tests/)
+    runs/           start-a-run + read-run endpoints
+    competitors/    provision/list/teardown competitors (renamed from controllers/benchmarks/)
+    webhooks/       inbound webhook receivers (Dial only — competitors don't call us back)
 
 frontend/src/
   pages/          routed top-level views
   components/      presentational + container components, grouped by domain
+    agents/         agent list, registration form (phone + description)
+    suite/          test suite list, test editor, run-suite button
+    runs/           run-detail UI: status, transcript, audio player, target summary
+    scorecard/      per-criterion verdict rendering
+    comparison/     user-bot vs competitor side-by-side (renamed from components/benchmark/)
   api/            typed HTTP client functions, one file per backend domain
   hooks/          React Query hooks
   types/          shared frontend types
@@ -101,15 +153,24 @@ frontend/src/
 
 ## Request flow examples
 
-- **Create an AUT:** `controllers/agents` → `bl/agents` → `dal/agents`. For a Dial agent,
-  `bl/agents` also calls `providers/dial` to provision a number + set its
-  `inboundInstruction`.
-- **Generate a tester:** `controllers/tests` → `bl/tests/generateTesterPrompt` → `llm`.
-- **Run a test:** `controllers/runs` → `bl/runs/startRun` → `providers/<vendor>.placeCall`.
-- **Capture result:** vendor → `controllers/webhooks/<vendor>` →
-  `bl/runs/ingestCallResult` → `bl/scoring/judge` → `dal/scores`.
-- **Reconcile a miss:** `jobs/reconcileRuns` → `providers/<vendor>.getCall` →
-  `bl/runs/ingestCallResult`.
+- **Register an agent + generate the suite:** `controllers/agents.POST` →
+  `bl/agents.create` (persists `{ name, phoneNumber, description }`) →
+  `bl/suite.generateFromDescription` → `llm` → `dal/tests` (writes one row per generated
+  test). Returns the agent and its initial suite in one response.
+- **Regenerate / edit a suite:** `controllers/agents.regenerateSuite` →
+  `bl/suite.generateFromDescription`; `PATCH /tests/:id` → `dal/tests` for hand edits.
+- **Run a test:** `controllers/runs.start` → `bl/runs.startRun` →
+  `providers/dial.placeCall` to the target phone number (user-bot *or* competitor).
+- **Capture result:** Dial webhook → `controllers/webhooks/dial` →
+  `bl/runs.ingestCallResult` (writes transcript + `audioUrl` + `durationSeconds`) →
+  `bl/scoring.judgeRun` → `dal/scores`.
+- **Reconcile a miss:** `jobs/reconcileRuns` → `providers/dial.getCall` →
+  `bl/runs.ingestCallResult`.
+- **Provision a competitor (stretch):** `controllers/competitors.create` →
+  `bl/competitors.provision` → `llm.buildSimulationPrompt` →
+  `providers/<elevenlabs|openai>.provisionAgent` → `dal/competitors` (stores the phone
+  number alongside the agent). Subsequent runs against this competitor go through the
+  normal run path — `bl/runs.startRun` just gets a different `target_phone_number`.
 
 ## Reference implementations
 
@@ -125,7 +186,9 @@ Lift wiring straight from the Dial playbooks repo
 
 Judging-criteria implication for the architecture
 (https://getdial.ai/hackathon/my-agent-has-a-phone/criteria, criterion 2 — *technical
-execution & Dial depth*): the demo should exercise **multiple Dial capabilities**
-(outbound + inbound + events + transcripts), so keep `providers/dial` thick and use real
-events/webhooks rather than only polling. Polling stays as the reliability backstop, not
-the primary path.
+execution & Dial depth*): keep `providers/dial` thick and surface **multiple Dial
+capabilities** in the demo — outbound calls, `call.ended` + `call.transcribed` events,
+transcript retrieval, and audio recording playback. Use real webhooks for the primary
+path so the demo feels live; polling stays as the reliability backstop, not the headline
+mechanism. The competitor flow is intentionally *also* a Dial outbound call (to the
+competitor's number), so the comparison view keeps Dial central.

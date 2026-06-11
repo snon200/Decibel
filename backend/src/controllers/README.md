@@ -5,13 +5,16 @@ Express routers — the HTTP edge. Keep them **thin**: parse/validate the reques
 
 ## Subfolders (one per domain)
 
-- `agents/` — CRUD for Agents Under Test. `POST /agents`, `GET /agents`, `GET /agents/:id`,
-  `PATCH /agents/:id`.
-- `tests/` — `POST /tests`, `POST /tests/:id/generate-tester`, `GET /tests/:id`.
-- `runs/` — `POST /tests/:id/run` (start a run), `GET /runs/:id` (status + transcript +
-  scores; the dashboard polls this).
-- `benchmarks/` — `POST /benchmarks` (fan a test across platforms), `GET /benchmarks/:id`.
-- `webhooks/` — inbound webhook receivers for each provider (the result channel).
+- `agents/` — register/list/read AUTs. `POST /agents` (registers + auto-generates the
+  suite), `GET /agents`, `GET /agents/:id`, `PATCH /agents/:id`.
+- `suite/` — `POST /agents/:id/regenerate-suite`, `GET /agents/:id/tests`,
+  `GET /tests/:id`, `PATCH /tests/:id`, `POST /tests/:id/run`,
+  `POST /agents/:id/run-suite`.
+- `runs/` — `GET /runs/:id` (status + transcript + audio URL + scores; the dashboard
+  polls this).
+- `competitors/` — (stretch) `POST /agents/:id/competitors` (provision a simulated
+  competitor), `GET /agents/:id/competitors`, `GET /agents/:id/comparison`.
+- `webhooks/` — inbound webhook receivers (Dial only — competitors don't notify us).
 
 Each subfolder has an `index.ts` exporting a router, mounted in `src/index.ts` via
 `app.use("/<name>", router)`. Validate request bodies with Zod.

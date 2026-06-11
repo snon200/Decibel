@@ -1,30 +1,30 @@
 # providers/vapi/
 
-Adapter for **VAPI** — used by the "Us vs competitors" benchmark.
+Adapter for **VAPI** — an additional optional `CompetitorProvider` (stretch, secondary).
+Same shape as `providers/elevenlabs/`: provisions a phone-reachable simulated bot; never
+on the call critical path. Once provisioned, the competitor is just another phone number
+that `providers/dial.placeCall` dials.
 
 Auth: `Authorization: Bearer <VAPI_API_KEY>`. Base URL: `https://api.vapi.ai`.
 
 ## What this adapter does
 
-- **`placeCall`** — `POST /call` with:
-  - `phoneNumberId` — a VAPI/imported number to call from.
-  - `customer.number` — the destination (the AUT's number).
-  - `assistant` (transient) **or** `assistantId` — carries the system prompt. For the
-    benchmark we send a transient `assistant` so the same AUT prompt runs unchanged.
-  - `serverUrl` — our webhook endpoint.
-  - `serverMessages: ["end-of-call-report", "status-update"]` — so we get the result.
+- **`provisionAgent({ systemPrompt, voice?, language? })`** —
+  1. `POST /assistant` — create a VAPI assistant with the simulation prompt + voice
+     settings. Returns `{ id }` as `externalAgentId`.
+  2. Acquire / attach a phone number to the assistant via `POST /phone-number` (or
+     import a Twilio number) so it can answer inbound calls.
+  3. Return `{ externalAgentId, phoneNumber }` for storage in the `competitors` table.
+- **`deleteAgent(externalAgentId)`** — `DELETE /assistant/{id}` (and detach the number)
+  to clean up.
 
-  Returns the call `id` as `externalCallId`.
-- **`getCall`** — `GET /call/{id}` → map `artifact.transcript`, `status`, and
-  `analysis.{summary,successEvaluation}` to `NormalizedCall`. Polling fallback.
-- **`verifyWebhook`** — validate the configured `serverUrlSecret` / signature header.
-- **`parseWebhookEvent`** — handle `end-of-call-report` (`message.artifact.transcript`,
-  `message.endedReason`) and `status-update` (`status: "ended"`). Map to
-  `NormalizedCallEvent`.
+## Why no `placeCall` / webhook here
+
+We don't dial *through* VAPI. The user-bot suite and the competitor suite both go out
+through Dial; VAPI is just where the competitor lives. Keeps the lifecycle uniform.
 
 ## Notes
 
-- The transcript arrives as a single string in `artifact.transcript`
-  (`"AI: ...\nUser: ..."`); `artifact.messages` is the structured form if we want roles.
-- Enable `recordingEnabled` only if we want audio; not needed for scoring.
+- VAPI supports "transient assistants" passed per call — useful for ad-hoc prompt
+  variations, but for a benchmark we want a stable, named assistant the user can inspect.
 - WebSocket transport exists for live audio but is unused here.

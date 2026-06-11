@@ -4,11 +4,12 @@
 
 ## One-liner
 
-You describe a voice agent and how it should behave. We spin up an **AI tester agent**
-that *calls your agent over a real phone line*, runs through scenarios, and scores how
-well it did against criteria you define — all visible in a dashboard. Then we let you run
-the **same** agent on competing platforms (VAPI, ElevenLabs) and compare results
-head-to-head.
+**Give us two things — your bot's phone number and a one-paragraph description of what it
+does — and we'll generate a whole test suite, dial your bot for each test, capture the
+audio + transcript, and have an LLM judge pass/fail every test against criteria it
+derived from your description.** Then, with one click, **run the same suite against a
+simulated competitor** (a public bot on ElevenLabs/OpenAI we prompt to mimic your
+description) and see how your bot stacks up.
 
 ---
 
@@ -16,14 +17,14 @@ head-to-head.
 
 Building a voice agent is easy. Knowing whether it actually *works* on a real call —
 handles interruptions, stays on script, recovers from confusion, hits its goal — is hard
-and manual. Today people test by calling their own bot and listening. That doesn't scale
-and isn't repeatable.
+and manual. People test by calling their own bot and listening. That doesn't scale, it
+doesn't catch regressions, and it doesn't expose the ASR/TTS/latency stack to load.
 
-**Agent Arena turns evaluation into a one-click, repeatable, phone-based test.** A tester
-agent does the calling, an LLM judge does the scoring, and a dashboard shows the evidence
-(transcript + per-criterion verdict). Because everything runs over the actual telephone
-network via Dial, we test the real thing — voice, latency, ASR/TTS, the whole stack — not
-a text simulation.
+**Agent Arena turns evaluation into a two-input, one-click, phone-based test.** The user
+provides only "what the bot is" and "where to reach it"; we generate the test suite, run
+the calls, score the transcripts, and let the user listen to the recordings. Because
+everything runs over the actual telephone network via Dial, we test the real thing —
+voice, latency, ASR/TTS, the whole stack — not a text simulation.
 
 ---
 
@@ -31,106 +32,144 @@ a text simulation.
 
 | Concept | What it is |
 | --- | --- |
-| **Agent Under Test (AUT)** | The "main bot" the user is building. A system prompt + a Dial phone number that answers inbound calls (`inboundInstruction`). |
-| **Tester Agent** | An AI agent we generate. It *places an outbound call* to the AUT and plays a persona/scenario. Driven by an `outboundInstruction` we synthesize from the test prompt + criteria. |
-| **Criteria** | A list of pass/fail (or scored) statements describing success, e.g. *"Confirmed the reservation time"*, *"Never invented a price"*, *"Stayed polite when interrupted"*. |
-| **Test Run** | One call: tester → AUT. Produces a transcript, a duration, a status, and — after judging — a per-criterion score. |
-| **Judge** | An LLM that reads the transcript and scores it against each criterion, with a short justification. |
-| **Benchmark** | The same AUT prompt deployed on multiple platforms (Dial, VAPI, ElevenLabs). Run the same tester against each and compare scores. |
+| **Agent Under Test (AUT)** | The user's voice bot, identified by **(a) its phone number** and **(b) a free-text description** of what it does. We never see its prompt — the description is our only window into what "good" looks like. |
+| **Test suite** | A collection of `Test`s automatically generated from the AUT description by an LLM. Each test is one realistic scenario (e.g. *"Customer wants to reschedule an existing booking by an hour"*). The user can review, edit, and re-generate before running. |
+| **Test** | One scenario, consisting of a tester-agent `outboundInstruction` (the persona/script the caller plays) **plus** a list of pass/fail criteria specific to that scenario. |
+| **Tester Agent** | An AI agent running on **our** Dial number. For each test it places an outbound call to the AUT and plays the test's persona. |
+| **Run** | One phone call — `(test, target) → transcript + audio + per-criterion verdicts`. The same test can be run against the user's bot *or* a competitor. |
+| **Judge** | An LLM that reads the transcript and scores it against each criterion with a short justification. |
+| **Competitor** | A simulated version of the user's bot, built on a public platform (ElevenLabs Conversational AI, OpenAI, etc.) using a system prompt we generate from the AUT description. Lets us answer *"how does your bot compare to a generic agent built on the same idea?"* |
 
 ---
 
 ## The flow (happy path)
 
-1. **Write your bot.** User writes the AUT system prompt in the dashboard (e.g. *"You are a
-   receptionist for Tony's Pizza taking reservations."*).
-2. **Generate a tester.** User writes a short test intent + criteria. We use an LLM to
-   generate a tester `outboundInstruction` — a persona and a scenario that will probe the
-   AUT (e.g. *"You are a customer trying to book a table for 6 at 7pm, then change it to
-   8pm. Be a little impatient."*).
-3. **Run the test.** We place a real phone call: the tester agent dials the AUT's Dial
-   number. The two AI agents talk to each other over the phone.
-4. **Capture the result.** When the call ends, Dial emits `call.ended`, then
-   `call.transcribed`. We fetch the transcript via `GET /api/v1/calls/{id}`.
-5. **Judge it.** The LLM judge scores the transcript against each criterion and returns
-   pass/fail + justification + an overall score.
-6. **See it in the dashboard.** Live run status, transcript, per-criterion verdicts, and
-   historical runs — all built from scratch in our own UI.
+1. **Onboard the agent.** User submits two inputs:
+   - **Testing phone line** — the phone number we'll dial when running tests.
+   - **Agent description** — one paragraph describing what the bot does, its persona, and
+     its key responsibilities (e.g. *"Receptionist for Tony's Pizza. Takes table
+     reservations and to-go orders. Knows the menu and hours. Should always confirm name +
+     phone before booking."*).
+2. **Generate the test suite.** An LLM reads the description and produces 5–10 tests.
+   For each: a name, a scenario summary, a generated `outboundInstruction` (the tester's
+   persona), and a list of pass/fail criteria specific to that scenario. The user can
+   edit any of it or regenerate.
+3. **Run a test (or the whole suite).** For each test we place a real phone call from our
+   Dial tester number to the AUT. The tester AI agent talks to the user's AI agent.
+4. **Capture the result.** When the call ends, Dial emits `call.ended` then
+   `call.transcribed`. We fetch the transcript via `GET /api/v1/calls/{id}`. Audio
+   recording URL is captured alongside.
+5. **Judge it.** The LLM judge scores the transcript against the test's criteria — pass/
+   fail + one-sentence justification per criterion, plus an overall %.
+6. **Review.** The dashboard shows every run with the transcript, an audio player, and
+   the per-criterion scorecard. Listen, read, decide.
 
-### Stretch flow: Us vs. the competitors
+### Stretch flow: "Test the competitors"
 
-7. **Benchmark.** Deploy the *same* AUT prompt as an agent on VAPI and ElevenLabs. Run the
-   *same* tester scenario against each. The dashboard shows a side-by-side scorecard:
-   Dial vs VAPI vs ElevenLabs on the identical criteria.
+7. **Spin up a simulated competitor.** From the same agent description we generate a
+   system prompt for a public voice-agent platform (primary target: **ElevenLabs
+   Conversational AI**, which can answer phone calls out of the box; secondary: any
+   competitor with a phone-reachable AI agent). The prompt instructs the public bot to
+   behave as if it were the user's bot.
+8. **Re-run the same suite against the competitor's number** and show a side-by-side
+   scorecard: your bot vs the competitor on identical tests.
 
 ```
-                       ┌─────────────────────────┐
-   user writes  ─────► │   Agent Under Test       │  (Dial number, inboundInstruction)
-   AUT prompt          └─────────────────────────┘
-                                   ▲
-                                   │  real phone call
-   user writes        ┌───────────┴─────────────┐
-   intent + criteria  │      Tester Agent        │  (outbound call, generated prompt)
-        │             └─────────────────────────┘
-        ▼                         │
-   LLM generates                  │ call.ended → call.transcribed
-   tester prompt                  ▼
-                       ┌─────────────────────────┐
-                       │   Judge (LLM)            │  scores transcript vs criteria
-                       └─────────────────────────┘
-                                   │
-                                   ▼
-                       ┌─────────────────────────┐
-                       │   Dashboard (our UI)     │  runs, transcripts, scorecards
-                       └─────────────────────────┘
+   user submits ───►  phone number  +  agent description
+                                            │
+                                            ▼
+                              ┌────────────────────────────┐
+                              │   LLM test-suite generator  │   (description → 5–10 tests
+                              └────────────────────────────┘    each with persona +
+                                            │                    criteria)
+                                            ▼
+                              ┌────────────────────────────┐
+   user clicks "Run" ───────► │   Tester Agent (Dial)       │ ──┐ outbound call from our
+                              └────────────────────────────┘   │ Dial number, per test
+                                                               │
+                              user's bot   ◄───── phone ──────┘
+                              (any platform, any number)
+                                            │
+                                            ▼
+                              ┌────────────────────────────┐
+                              │   Dial events + REST        │   call.ended →
+                              │   transcript + audio        │   call.transcribed →
+                              └────────────────────────────┘   GET /calls/{id}
+                                            │
+                                            ▼
+                              ┌────────────────────────────┐
+                              │   Judge (LLM)               │   pass/fail per criterion
+                              └────────────────────────────┘   with justification
+                                            │
+                                            ▼
+                              ┌────────────────────────────┐
+                              │   Dashboard (our UI)        │   transcript + audio
+                              │                              │   player + scorecard
+                              └────────────────────────────┘
+                                            │
+                                            │  (stretch) re-run same suite
+                                            ▼  against a simulated competitor
+                              ┌────────────────────────────┐
+                              │   Competitor (ElevenLabs/   │   prompt generated from
+                              │   OpenAI public bot)        │   the agent description
+                              └────────────────────────────┘
 ```
 
 ---
 
 ## How it maps to Dial
 
-Everything voice runs on the [Dial API](https://docs.getdial.ai). Key pieces:
+Everything voice runs on the [Dial API](https://docs.getdial.ai). The tester always lives
+on Dial; the AUT lives wherever it lives.
 
-- **AUT = an inbound Dial number.** Provision a number and set its `inboundInstruction` to
-  the AUT system prompt. Dial answers inbound calls automatically with an AI voice.
-  ([Receive a voice call](https://docs.getdial.ai/documentation/capabilities/receive-a-voice-call))
-- **Tester = an outbound call.** `POST /api/v1/calls` with `to` = AUT number,
-  `fromNumberId` = our tester number, `outboundInstruction` = generated tester prompt,
-  `language`. Use the `Idempotency-Key` header so retries don't double-dial.
+- **Tester = an outbound call from our Dial number.** `POST /api/v1/calls` with
+  `to` = AUT phone number, `fromNumberId` = our tester number, `outboundInstruction` =
+  generated tester prompt, `language`. Use the `Idempotency-Key` header so retries don't
+  double-dial.
   ([Place a voice call](https://docs.getdial.ai/documentation/capabilities/place-a-voice-call))
+- **AUT = whatever phone number the user gave us.** Any platform, any provider — we never
+  touch it programmatically, we just dial it.
+- **Competitor (stretch) = an inbound phone bot on a public platform**, prompted to
+  simulate the AUT description. We dial *that* number for the comparison run, using the
+  same outbound mechanism.
 - **Results = events + call record.** Listen on the account event stream for `call.ended`
   (terminal status, duration) then `call.transcribed` (transcript ready), and fetch the
-  call via `GET /api/v1/calls/{id}` for the transcript.
+  call via `GET /api/v1/calls/{id}` for the transcript + audio URL.
   ([Stream account events](https://docs.getdial.ai/documentation/platform/stream-account-events),
   [call.ended](https://docs.getdial.ai/api-reference/events/call-ended),
   [call.transcribed](https://docs.getdial.ai/api-reference/events/call-transcribed))
 - **Auth.** `Authorization: Bearer sk_live_...` on every request.
-- **SDK.** Backend uses the `@getdial/sdk` Node client (`dial.makeCall(...)`,
-  `dial.getCall(...)`, `dial.newEventsConnection()`).
+- **SDK / MCP.** Backend uses the `@getdial/sdk` Node client (`dial.makeCall(...)`,
+  `dial.getCall(...)`, `dial.newEventsConnection()`). The Claude Code MCP integration is
+  for *operating* the system during the demo; production code goes through the SDK.
 
-> Note: the event stream is presence-based (replays only if you reconnect within ~2 min),
-> so the backend keeps a long-lived listener and also polls `GET /api/v1/calls/{id}` as a
-> fallback to guarantee we capture the transcript.
+> The event stream is presence-based (replays only on reconnect within ~2 min), so the
+> backend keeps a long-lived listener and also polls `GET /api/v1/calls/{id}` as a
+> fallback to guarantee we capture every transcript.
 
 ---
 
 ## MVP scope (what we commit to)
 
-1. **AUT editor** — create/edit an agent prompt, provision/attach a Dial number, set
-   `inboundInstruction`.
-2. **Test authoring** — write a test intent + a list of criteria; AI generates the tester
-   `outboundInstruction` (editable before running).
-3. **Run a test** — trigger the outbound call, track status live, capture transcript.
+1. **Two-input onboarding** — register an agent with `{ name, phoneNumber, description }`.
+2. **AI-generated test suite** — one LLM call turns the description into a list of tests,
+   each with a generated `outboundInstruction` and criteria. User can edit/regenerate.
+3. **Run a test (and run the whole suite)** — outbound call per test, live status,
+   transcript + audio URL captured.
 4. **Scoring** — LLM judge produces per-criterion pass/fail + justification + overall %.
-5. **Dashboard** — list of agents, list of runs per agent, run detail (transcript +
-   scorecard). Built from scratch.
+5. **Dashboard** — agents list → agent detail (suite + run history) → run detail
+   (transcript + audio player + scorecard). Built from scratch.
 
 ## Stretch scope
 
-6. **Benchmark / "Us vs competitors"** — deploy the same AUT on VAPI and ElevenLabs, run
-   the same tester, show a comparison scorecard.
-7. **Test suites** — multiple scenarios per agent, aggregate pass rate.
-8. **Regression view** — re-run a suite after a prompt change and diff the scores.
+6. **Simulated competitor** — generate a system prompt from the description, provision
+   it on ElevenLabs Conversational AI, expose a phone number, run the same suite against
+   it. Side-by-side comparison view.
+7. **Multiple competitor platforms** — OpenAI / Retell / VAPI as additional targets.
+8. **Suite re-run / regression view** — re-run after the AUT description changes (or
+   after the user fixes their bot) and diff scores.
+9. **Per-test concurrency control** — run a suite in parallel with caps to stay under
+   Dial / competitor rate limits and cost ceilings.
 
 ---
 
@@ -138,26 +177,33 @@ Everything voice runs on the [Dial API](https://docs.getdial.ai). Key pieces:
 
 Tables (Drizzle, in `backend/src/database/schemas/`):
 
-- **`agents`** — `id`, `name`, `system_prompt`, `platform` (`dial` | `vapi` | `elevenlabs`),
-  `dial_number_id` / external agent id, `phone_number`, `created_at`.
-- **`tests`** — `id`, `agent_id`, `name`, `intent`, `criteria` (jsonb array of
-  `{ id, text }`), `tester_instruction` (generated), `created_at`.
-- **`runs`** — `id`, `test_id`, `agent_id`, `platform`, `call_id`, `status`
-  (`pending` | `dialing` | `in_progress` | `completed` | `failed`), `transcript`,
-  `duration_seconds`, `created_at`.
-- **`scores`** — `id`, `run_id`, `criterion_id`, `passed`, `score`, `justification`.
+- **`agents`** — `id`, `name`, `phone_number`, `description`, `created_at`.
+- **`tests`** — `id`, `agent_id`, `name`, `scenario_summary`, `tester_instruction`
+  (generated), `criteria` (jsonb array of `{ id, text }`), `created_at`.
+- **`runs`** — `id`, `test_id`, `target_kind` (`user_bot` | `competitor`),
+  `target_label` (e.g. `"ElevenLabs Convai"`), `target_phone_number`, `call_id`,
+  `status` (`pending` | `dialing` | `in_progress` | `completed` | `failed`),
+  `transcript`, `audio_url`, `duration_seconds`, `overall_score`, `created_at`.
+- **`scores`** — `id`, `run_id`, `criterion_id`, `passed`, `justification`.
+- **`competitors`** (stretch) — `id`, `agent_id`, `platform` (`elevenlabs` | `openai` | …),
+  `external_agent_id`, `phone_number`, `simulation_prompt`, `created_at`.
 
 ## Proposed backend endpoints
 
 Follows the repo's `controllers / bl / dal` layering.
 
-- `POST /agents` · `GET /agents` · `GET /agents/:id` — manage AUTs.
-- `POST /tests` — create a test; `POST /tests/:id/generate-tester` — AI-generate the tester prompt.
-- `POST /tests/:id/run` — place the outbound call and create a `run`.
-- `GET /runs/:id` — run status + transcript + scorecard (frontend polls or subscribes).
-- Internal: a Dial event listener that updates `runs` on `call.ended` / `call.transcribed`
-  and kicks off judging.
-- Stretch: `POST /benchmarks/:testId/run` — fan out the same test across platforms.
+- `POST /agents` — register `{ name, phoneNumber, description }`. Triggers the test-suite
+  generation as the same flow.
+- `GET /agents` · `GET /agents/:id` — list / read agents.
+- `POST /agents/:id/regenerate-suite` — re-run the LLM generator (replace or version the suite).
+- `GET /agents/:id/tests` · `PATCH /tests/:id` — list and edit individual tests.
+- `POST /tests/:id/run` — place an outbound call to the AUT, create a `run`.
+- `POST /agents/:id/run-suite` — fan out a run per test.
+- `GET /runs/:id` — run status + transcript + audio URL + scorecard (frontend polls).
+- Internal: Dial event listener updates `runs` on `call.ended` / `call.transcribed` and
+  kicks off judging.
+- Stretch: `POST /agents/:id/competitors` — generate + provision a competitor;
+  `POST /agents/:id/run-suite?target=competitor:<id>` — run the suite against it.
 
 ---
 
@@ -168,8 +214,10 @@ Uses the existing repo skeleton:
 - **Frontend** — React + TypeScript + Vite, React Query, styled-components.
 - **Backend** — Node + Express + TypeScript, Drizzle ORM, PostgreSQL.
 - **Voice** — Dial (`@getdial/sdk`).
-- **LLM** — for tester-prompt generation and for the judge (provider TBD; pluggable).
-- **Competitors (stretch)** — VAPI + ElevenLabs SDKs/APIs.
+- **LLM** — for suite generation, competitor-prompt generation, and judging (provider
+  TBD; pluggable through `backend/src/llm/`).
+- **Competitors (stretch)** — ElevenLabs Conversational AI (primary), then OpenAI /
+  Retell / VAPI.
 
 ---
 
@@ -180,26 +228,34 @@ Three criteria, 10 points each (30 total), averaged across judges. Scale: 1–3 
 
 | # | Criterion | How Agent Arena scores |
 | --- | --- | --- |
-| 1 | **Real-World Impact & Market Potential** — "would this exist as a company?" | Every voice-agent builder hits the same wall today: testing is manual and unrepeatable. Agent Arena is a paid eval tool for an audience that's growing fast (voice infra, CX teams, agent platforms). Phone is the *product surface*, not a gimmick — we can't deliver this without a real PSTN call. |
-| 2 | **Technical Execution & Dial Integration** — "depth over presence" | Dial is the runtime spine: outbound calls (tester), inbound numbers (AUTs), `call.ended` / `call.transcribed` event handling, and transcript retrieval via the REST API — orchestrated end-to-end and judged live during the demo. Not a one-shot API call. |
-| 3 | **Innovation & Phone-Native Creativity** — "impressive without the phone?" | The whole concept *requires* programmable telephony: two AI agents talking to each other on a real phone call, with a third AI judging the recording. Strip away the phone and it's just LLM-on-LLM text — interesting, but the voice/ASR/TTS/latency loop is exactly what makes voice agents hard to evaluate. |
+| 1 | **Real-World Impact & Market Potential** — "would this exist as a company?" | Two inputs and a click is the lowest-friction onboarding any voice-eval tool can offer — works for *every* voice-agent builder (VAPI, ElevenLabs, Retell, custom stack). Pitch: "CI for your voice agent before every deploy." Phone is the *product surface*, not a gimmick. |
+| 2 | **Technical Execution & Dial Integration** — "depth over presence" | Dial is the runtime spine: outbound calls (one per test), `call.ended` + `call.transcribed` events, transcript + audio retrieval, plus an LLM judge over the recorded conversation. The competitor stretch adds a *second* phone bot on a different platform that we dial through Dial as well — keeping Dial central even in the comparison flow. |
+| 3 | **Innovation & Phone-Native Creativity** — "impressive without the phone?" | An AI tester agent calling another AI agent on a real phone line, with a third AI judging the recording, and a *fourth* AI playing the competitor — strip away the phone and there's no story. The voice/ASR/TTS/latency loop is the entire point of testing voice agents at all. |
 
 Action items the rubric implies:
-- Use **multiple Dial capabilities** in the demo (inbound + outbound + events + transcripts), not just `POST /calls`.
-- Be ready to **demo live** — the rubric explicitly rewards "working live under demo conditions." Keep a known-good AUT + test ready to run on stage.
-- Pitch the **"who pays"** clearly: voice-agent teams running CI against their bots before deploys.
+- Use **multiple Dial capabilities** in the demo (outbound + events + transcripts + recording playback).
+- Be ready to **demo live** — the rubric explicitly rewards "working live under demo
+  conditions." Keep a known-good AUT + suite ready to run on stage.
+- Pitch the **"who pays"** clearly: voice-agent teams running CI against their bots before
+  deploys.
 
 ## Open questions / risks
 
-- **Two AI agents on one call.** Need to confirm tester↔AUT call quality and that the
-  tester reliably drives the conversation and hangs up when done.
+- **Audio recording availability.** We need a recording URL per call for the dashboard
+  player. Confirm Dial exposes one via the call record or event payload; if not, fall
+  back to TTS-rendering the transcript or skip the player for the MVP.
+- **Suite generation quality.** The whole UX depends on the LLM producing useful tests
+  from a single paragraph. We may need a short rubric / few-shot prompt and a "regenerate"
+  affordance to recover when output is weak.
 - **Judging reliability.** Criteria must be concrete enough for an LLM judge to score
-  consistently; may need a rubric format.
-- **Transcript timing.** `call.transcribed` can lag `call.ended`; rely on the event + a
-  polling fallback.
-- **Competitor parity.** Mapping "the same agent" onto VAPI / ElevenLabs fairly (same
-  prompt, comparable voice/latency settings) is the trickiest part of the benchmark.
-- **Cost & rate limits.** Real calls cost money and have limits; cap concurrency.
+  consistently. Force structured JSON output, validate with Zod, retry on parse failure.
+- **Two AI agents on one call.** Confirm call quality and that the tester reliably drives
+  the conversation and hangs up when done — this is the biggest "does it actually work"
+  risk.
+- **Competitor parity.** Provisioning a phone-reachable bot on ElevenLabs / OpenAI on the
+  fly is non-trivial; this is the stretch's main complexity. Start with one platform.
+- **Cost & rate limits.** Real calls cost money and have limits; cap concurrency and add a
+  per-agent run cap.
 
 ---
 
@@ -210,7 +266,10 @@ Action items the rubric implies:
 - **Judging criteria** — https://getdial.ai/hackathon/my-agent-has-a-phone/criteria
   (3 criteria × 10 pts; impact, technical execution + Dial depth, phone-native innovation).
 - **Dial docs** — https://docs.getdial.ai/documentation/get-started/introduction
-  (API, SDK, CLI, quickstart).
+  (API, SDK, CLI, quickstart). Every docs page has a plain-markdown twin (append `.md`
+  to any URL).
+- **Dial skills (offline copy)** — [`DIAL_SKILLS.md`](./DIAL_SKILLS.md), snapshotted from
+  https://getdial.ai/skills.md — CLI bootstrap, common verbs, REST surface, security rules.
 - **Playbooks** — https://github.com/GetDial-AI/playbooks/tree/main — runnable reference
   builds we can crib from:
     - `sms-and-voice/node-express` — closest match to our stack: Node/Express dashboard for

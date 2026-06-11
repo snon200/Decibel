@@ -1,29 +1,44 @@
 import express from "express";
 import { logger } from "../../lib/logger.ts";
-import { NotImplementedError } from "../../lib/errors.ts";
+import { getProvider } from "../../providers/registry.ts";
+import { ingestCallResult } from "../../bl/runs/index.ts";
 
 const router = express.Router();
+const dial = getProvider("dial");
 
-// Dial webhook receiver. Mounted in src/index.ts WITH `express.raw({ type: '*/*' })`
-// so that req.body is a Buffer of the unmodified bytes (needed for HMAC).
-//
-// Full implementation lands when providers/dial.verifyWebhook + parseWebhookEvent
-// and bl/runs.ingestCallResult are wired. For now: parse + log + 202 ack so the
-// route exists, the raw-body mount is exercised, and Dial doesn't see 404s during
-// early integration testing.
+// Mounted in src/index.ts WITH `express.raw({ type: '*/*' })` so req.body is the
+// unmodified Buffer needed for HMAC verification.
 router.post("/", (req, res) => {
 	const rawBody = Buffer.isBuffer(req.body)
 		? (req.body as Buffer).toString("utf8")
 		: "";
-	logger.info("dial webhook received (unverified, no ingest)", {
-		bytes: rawBody.length,
-		signaturePresent: Boolean(req.header("x-dial-signature")),
-		eventId: req.header("x-dial-event-id") ?? null,
-	});
-	// Intentionally return 202 to acknowledge receipt without acting on it.
-	// Will be replaced with verify → parse → ingestCallResult → 202.
-	void new NotImplementedError("webhooks/dial: verify + ingest pending");
+
+	const headers: Record<string, string | undefined> = {};
+	for (const [key, value] of Object.entries(req.headers)) {
+		headers[key] = Array.isArray(value) ? value[0] : value;
+	}
+
+	if (!dial.verifyWebhook({ rawBody, headers })) {
+		logger.warn("dial webhook: invalid signature");
+		res.status(401).end();
+		return;
+	}
+
+	const event = dial.parseWebhookEvent({ rawBody, headers });
+
+	// Ack immediately — Dial retries on non-2xx. Processing is async + idempotent.
 	res.status(202).end();
+
+	if (!event) return;
+	ingestCallResult({
+		providerName: "dial",
+		externalCallId: event.externalCallId,
+	}).catch((err) => {
+		logger.error("dial webhook: ingest failed", {
+			externalCallId: event.externalCallId,
+			error: err instanceof Error ? err.message : String(err),
+		});
+	});
 });
 
 export default router;

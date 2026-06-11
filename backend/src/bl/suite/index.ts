@@ -1,18 +1,60 @@
 import * as TestsDal from "../../dal/tests.ts";
 import * as AgentsDal from "../../dal/agents.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { logger } from "../../lib/logger.ts";
+import { llm } from "../../llm/client.ts";
 import {
-	BadRequestError,
-	NotFoundError,
-	NotImplementedError,
-} from "../../lib/errors.ts";
+	GeneratedSuiteSchema,
+	buildSuiteGeneratorPrompt,
+} from "../../llm/prompts/suiteGenerator.ts";
+import type { NewTestInput } from "../../dal/tests.ts";
 import type { Criterion, Test } from "../../database/schemas/tests.ts";
 
-export const generateFromDescription = async (_input: {
+// Pure: ask the LLM to design a suite for the agent. Does not persist.
+const callLlm = async (input: {
+	agentId: string;
+	name: string;
+	description: string;
+}): Promise<NewTestInput[]> => {
+	const prompt = buildSuiteGeneratorPrompt({
+		agentName: input.name,
+		description: input.description,
+	});
+	const result = await llm.completeJson({
+		...prompt,
+		schema: GeneratedSuiteSchema,
+	});
+
+	return result.tests.map((t) => {
+		const seen = new Set<string>();
+		const criteria: Criterion[] = [];
+		for (const c of t.criteria) {
+			if (seen.has(c.id)) continue;
+			seen.add(c.id);
+			criteria.push({ id: c.id, text: c.text });
+		}
+		return {
+			agentId: input.agentId,
+			name: t.name,
+			scenarioSummary: t.scenarioSummary,
+			testerInstruction: t.testerInstruction,
+			criteria,
+		};
+	});
+};
+
+export const generateFromDescription = async (input: {
 	agentId: string;
 	name: string;
 	description: string;
 }): Promise<Test[]> => {
-	throw new NotImplementedError("suite.generateFromDescription (LLM call pending)");
+	const tests = await callLlm(input);
+	const inserted = await TestsDal.bulkCreateTests({ tests });
+	logger.info("suite generated", {
+		agentId: input.agentId,
+		count: inserted.length,
+	});
+	return inserted;
 };
 
 export const regenerateSuite = async (input: {
@@ -20,11 +62,20 @@ export const regenerateSuite = async (input: {
 }): Promise<Test[]> => {
 	const agent = await AgentsDal.getAgent({ id: input.agentId });
 	if (!agent) throw new NotFoundError("Agent");
-	return generateFromDescription({
+	const tests = await callLlm({
 		agentId: agent.id,
 		name: agent.name,
 		description: agent.description,
 	});
+	const inserted = await TestsDal.replaceSuiteForAgent({
+		agentId: agent.id,
+		tests,
+	});
+	logger.info("suite regenerated", {
+		agentId: agent.id,
+		count: inserted.length,
+	});
+	return inserted;
 };
 
 export const listTestsForAgent = async (input: {

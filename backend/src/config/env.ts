@@ -14,6 +14,11 @@ const envSchema = z.object({
 	VAPI_API_KEY: z.string().optional(),
 	VAPI_PHONE_NUMBER_ID: z.string().optional(),
 	VAPI_WEBHOOK_SECRET: z.string().optional(),
+
+	OPENAI_API_KEY: z.string().optional(),
+	OPENAI_MODEL: z.string().default("gpt-4o"),
+
+	ELEVENLABS_API_KEY: z.string().optional(),
 });
 
 export const config = envSchema.parse(process.env);

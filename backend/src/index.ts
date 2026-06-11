@@ -5,6 +5,7 @@ import suiteRouter from "./controllers/suite/index.ts";
 import runsRouter from "./controllers/runs/index.ts";
 import dialWebhookRouter from "./controllers/webhooks/dial.ts";
 import { errorHandler } from "./lib/errorHandler.ts";
+import { startJobs } from "./jobs/index.ts";
 
 const app = express();
 const port = 3000;
@@ -31,6 +32,7 @@ const startServer = async () => {
 	try {
 		app.listen(port, () => {
 			console.log(`Server running at http://localhost:${port}`);
+			startJobs();
 		});
 	} catch (err) {
 		console.error("Error starting server:", err);

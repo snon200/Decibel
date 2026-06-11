@@ -1,7 +1,10 @@
 import { config as loadDotenv } from "dotenv";
 import { z } from "zod";
 
+// Base, committed defaults (DB, non-secret config).
 loadDotenv();
+// Local, git-ignored secrets/overrides (API keys, number ids). Wins over .env.
+loadDotenv({ path: ".env.local", override: true });
 
 const envSchema = z.object({
 	PORT: z.coerce.number().default(3000),
@@ -13,7 +16,13 @@ const envSchema = z.object({
 
 	VAPI_API_KEY: z.string().optional(),
 	VAPI_PHONE_NUMBER_ID: z.string().optional(),
+	VAPI_ASSISTANT_ID: z.string().optional(),
 	VAPI_WEBHOOK_SECRET: z.string().optional(),
+
+	ELEVENLABS_API_KEY: z.string().optional(),
+	ELEVENLABS_AGENT_ID: z.string().optional(),
+	ELEVENLABS_PHONE_NUMBER_ID: z.string().optional(),
+	ELEVENLABS_WEBHOOK_SECRET: z.string().optional(),
 });
 
 export const config = envSchema.parse(process.env);

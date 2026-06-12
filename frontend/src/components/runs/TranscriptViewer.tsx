@@ -12,7 +12,7 @@ export default function TranscriptViewer({ transcript }: { transcript: string | 
 				const speaker = detectSpeaker(line);
 				return (
 					<Line key={i} $speaker={speaker}>
-						{line || " "}
+						{renderLine(line, speaker)}
 					</Line>
 				);
 			})}
@@ -20,7 +20,9 @@ export default function TranscriptViewer({ transcript }: { transcript: string | 
 	);
 }
 
-const detectSpeaker = (line: string): "tester" | "aut" | "system" | null => {
+type SpeakerKind = "tester" | "aut" | "system" | null;
+
+const detectSpeaker = (line: string): SpeakerKind => {
 	const trimmed = line.trim().toLowerCase();
 	if (trimmed.startsWith("tester:") || trimmed.startsWith("caller:") || trimmed.startsWith("user:")) {
 		return "tester";
@@ -32,6 +34,23 @@ const detectSpeaker = (line: string): "tester" | "aut" | "system" | null => {
 		return "system";
 	}
 	return null;
+};
+
+const SPEAKER_LABEL: Record<"tester" | "aut", string> = {
+	tester: "Tester",
+	aut: "Agent",
+};
+
+/**
+ * Rewrite the raw "User: …" / "Agent: …" prefix to the display label
+ * ("Tester" / "Agent") so the viewer matches the chat-bubble view.
+ */
+const renderLine = (line: string, speaker: SpeakerKind): string => {
+	if (!line) return " ";
+	if (!speaker || speaker === "system") return line;
+	const m = line.match(/^(\s*)[A-Za-z][A-Za-z ]*?\s*:\s*(.*)$/);
+	if (!m) return line;
+	return `${m[1]}${SPEAKER_LABEL[speaker]}: ${m[2]}`;
 };
 
 const Empty = styled.p`
@@ -59,7 +78,7 @@ const speakerColors = {
 	system: "var(--text-dim)",
 };
 
-const Line = styled.div<{ $speaker: "tester" | "aut" | "system" | null }>`
+const Line = styled.div<{ $speaker: SpeakerKind }>`
 	color: ${(p) => (p.$speaker ? speakerColors[p.$speaker] : "var(--text-muted)")};
 	font-weight: ${(p) => (p.$speaker ? 500 : 400)};
 `;

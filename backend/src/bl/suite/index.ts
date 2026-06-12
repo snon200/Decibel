@@ -21,7 +21,11 @@ const dedupeCriteria = (raw: Criterion[]): Criterion[] => {
 	for (const c of raw) {
 		if (seen.has(c.id)) continue;
 		seen.add(c.id);
-		out.push({ id: c.id, text: c.text });
+		out.push({
+			id: c.id,
+			text: c.text,
+			...(c.kind ? { kind: c.kind } : {}),
+		});
 	}
 	return out;
 };
@@ -58,7 +62,11 @@ export const generateContent = async (input: {
 		for (const c of t.criteria) {
 			if (seen.has(c.id)) continue;
 			seen.add(c.id);
-			criteria.push({ id: c.id, text: c.text });
+			criteria.push({
+				id: c.id,
+				text: c.text,
+				...(c.kind ? { kind: c.kind } : {}),
+			});
 		}
 		return {
 			name: t.name,
@@ -200,6 +208,12 @@ export const updateTest = async (input: {
 	return TestsDal.updateTest(input);
 };
 
+const ALLOWED_KINDS: ReadonlySet<string> = new Set([
+	"transcript",
+	"received_sms",
+	"sms_content",
+]);
+
 export const validateCriteria = (criteria: Criterion[]): void => {
 	if (criteria.length === 0) {
 		throw new BadRequestError("criteria must not be empty");
@@ -216,5 +230,10 @@ export const validateCriteria = (criteria: Criterion[]): void => {
 			throw new BadRequestError(`duplicate criterion id: ${c.id}`);
 		}
 		seen.add(c.id);
+		if (c.kind !== undefined && !ALLOWED_KINDS.has(c.kind)) {
+			throw new BadRequestError(
+				`criterion.kind must be one of transcript, received_sms, sms_content (got "${c.kind}")`,
+			);
+		}
 	}
 };

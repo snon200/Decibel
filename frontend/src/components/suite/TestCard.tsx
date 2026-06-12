@@ -48,9 +48,14 @@ export default function TestCard({
 				<HistoryBtn type="button" onClick={() => setHistoryOpen(true)}>
 					History
 				</HistoryBtn>
-				{latestRun && (busy || isTerminal(latestRun.status)) && (
-					<ResultsLink to={`/runs/${latestRun.id}`}>View results →</ResultsLink>
-				)}
+				{/* Skip the link while latestRun is the optimistic placeholder
+				    (id="optimistic-…") inserted by useStartTestRun — it has no
+				    server-side row yet and clicking 404s on GET /runs/:id. */}
+				{latestRun &&
+					!latestRun.id.startsWith("optimistic-") &&
+					(busy || isTerminal(latestRun.status)) && (
+						<ResultsLink to={`/runs/${latestRun.id}`}>View results →</ResultsLink>
+					)}
 			</Actions>
 			{start.error && <ErrorText>{(start.error as Error).message}</ErrorText>}
 			<TestHistoryDialog

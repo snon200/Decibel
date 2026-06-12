@@ -28,8 +28,11 @@ Rules:
 - "passed" is the strict pass/fail; "score" lets you express partial credit (e.g. 70 = mostly satisfied, one minor lapse).
 - The justification MUST reference what was actually said. If the criterion was untestable (e.g. the call ended too early), justify that and score 0, passed=false.
 - Be evidence-driven and conservative. If unsure, lean to passed=false but explain.
-- For criteria about the agent sending an SMS/text/confirmation, treat the "SMS activity" section as authoritative: a matching message there means it was sent (note the timing relative to the call); an empty section means no SMS was sent.
-- You are target-blind: do not factor in which platform or vendor the bot might be running on.`;
+- You are target-blind: do not factor in which platform or vendor the bot might be running on.
+
+CRITERION KIND — each criterion you see is tagged with [transcript] or [sms_content]. Use the right evidence for each:
+- [transcript] criteria: evaluate against the call transcript below. The "SMS activity" section is supporting context but not the primary evidence.
+- [sms_content] criteria: evaluate against the BODY of the SMS messages in "SMS activity". The transcript is supporting context — what matters is whether the SMS content satisfies the criterion. If multiple SMS were received, look at all of them together. If the text was vague or partial, score accordingly.`;
 
 export const JudgeOutputSchema = z.object({
 	verdicts: z
@@ -47,7 +50,9 @@ export const JudgeOutputSchema = z.object({
 export type JudgeOutput = z.infer<typeof JudgeOutputSchema>;
 
 const formatCriteria = (criteria: Criterion[]): string =>
-	criteria.map((c) => `- ${c.id}: ${c.text}`).join("\n");
+	criteria
+		.map((c) => `- [${c.kind ?? "transcript"}] ${c.id}: ${c.text}`)
+		.join("\n");
 
 /**
  * Dial labels our outbound tester as "Agent" and the answering bot-under-test

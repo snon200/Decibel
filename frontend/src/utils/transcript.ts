@@ -24,29 +24,38 @@ export interface TimedTurn extends Turn {
 	end: number;
 }
 
+/**
+ * Dial labels its hosted outbound side (OUR TESTER) as "agent" / "assistant"
+ * in the transcript, and the answering side (THE AUT, the bot under test) as
+ * "user". Place the AUT on the right (the bot we're evaluating gets the
+ * dominant side) and our tester on the left.
+ */
 const SPEAKER_SIDE: Record<string, TurnSide> = {
-	agent: "right",
-	assistant: "right",
-	bot: "right",
-	aut: "right",
-	user: "left",
+	// Our outbound tester
+	agent: "left",
+	assistant: "left",
 	caller: "left",
 	tester: "left",
+	// The agent under test
+	user: "right",
+	bot: "right",
+	aut: "right",
 	system: "center",
 };
 
 /**
- * What we *show* the user for each raw speaker label. Dial's transcript labels
- * the inbound side ("user"/"caller") as the test caller, so we surface it as
- * "Tester" for clarity. Everything on the right side ("agent"/"assistant"/...)
- * is the AUT and stays "Agent".
+ * Display labels. The raw Dial prefixes "agent" / "user" are misleading in this
+ * product: "agent" is *our* tester (the AI we drive), and "user" is the bot
+ * being tested. Rewrite them so the chat reads "Tester" / "Agent".
  */
 const SPEAKER_DISPLAY: Record<string, string> = {
-	user: "Tester",
+	// Our outbound tester
+	agent: "Tester",
+	assistant: "Tester",
 	caller: "Tester",
 	tester: "Tester",
-	agent: "Agent",
-	assistant: "Agent",
+	// The agent under test
+	user: "Agent",
 	bot: "Agent",
 	aut: "Agent",
 	system: "System",

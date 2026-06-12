@@ -22,12 +22,26 @@ export default function TranscriptViewer({ transcript }: { transcript: string | 
 
 type SpeakerKind = "tester" | "aut" | "system" | null;
 
+/**
+ * Dial's transcript labels its hosted outbound side ("agent"/"assistant") as
+ * OUR TESTER, and the answering side ("user") as THE AUT (the bot under test).
+ * Map raw prefixes to those two roles so colours + labels line up correctly.
+ */
 const detectSpeaker = (line: string): SpeakerKind => {
 	const trimmed = line.trim().toLowerCase();
-	if (trimmed.startsWith("tester:") || trimmed.startsWith("caller:") || trimmed.startsWith("user:")) {
+	if (
+		trimmed.startsWith("agent:") ||
+		trimmed.startsWith("assistant:") ||
+		trimmed.startsWith("caller:") ||
+		trimmed.startsWith("tester:")
+	) {
 		return "tester";
 	}
-	if (trimmed.startsWith("aut:") || trimmed.startsWith("agent:") || trimmed.startsWith("bot:") || trimmed.startsWith("assistant:")) {
+	if (
+		trimmed.startsWith("user:") ||
+		trimmed.startsWith("bot:") ||
+		trimmed.startsWith("aut:")
+	) {
 		return "aut";
 	}
 	if (trimmed.startsWith("system:") || trimmed.startsWith("[")) {
@@ -42,7 +56,7 @@ const SPEAKER_LABEL: Record<"tester" | "aut", string> = {
 };
 
 /**
- * Rewrite the raw "User: …" / "Agent: …" prefix to the display label
+ * Rewrite the raw "Agent: …" / "User: …" prefix to the display label
  * ("Tester" / "Agent") so the viewer matches the chat-bubble view.
  */
 const renderLine = (line: string, speaker: SpeakerKind): string => {

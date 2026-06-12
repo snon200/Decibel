@@ -9,10 +9,35 @@ confirmation/summary.
 
 ## How it works
 
-- Exposes a single MCP tool, `send_sms({ body, to? })`, over Streamable HTTP at `POST /mcp`.
+- Exposes MCP tools over Streamable HTTP at `POST /mcp`:
+  - `send_sms({ body, to? })` — text the caller.
+  - `send_payment_request({ description, amountUsd?, to? })` — create a Stripe
+    (test-mode) Checkout Session and text the payment link to the caller. PCI-safe:
+    the agent never handles card numbers. Stripe disallows $0, so the minimum is
+    ~$0.50; defaults to $1.00. Requires `STRIPE_API_KEY` (sk_test_...).
 - On each call, Dial sends `X-Dial-User-Number` (the caller) and `X-Dial-Agent-Number`
-  (your Dial number). The tool defaults the recipient to the caller and sends from
+  (your Dial number). Tools default the recipient to the caller and send from
   the number the call is on, via Dial `POST /api/v1/messages`.
+
+### Webhook tools (for non-Dial agents, e.g. ElevenLabs)
+
+Agents on other platforms can't use a Dial Context MCP, so the same actions are
+also exposed as plain HTTP webhooks an ElevenLabs server tool can call:
+
+- `POST /tools/sms` — body `{ message, to }`. ElevenLabs doesn't substitute
+  system vars in headers, so the recipient rides in the body `to` field, bound to
+  `{{system__caller_id}}` via the tool's `dynamic_variable`. (`X-Caller-Id` header
+  is also accepted as a fallback.)
+- `POST /tools/payment` — body `{ description, amount_usd?, to }`, same binding.
+- `GET /sent-log?since=ISO&to=E164` — the **evidence feed**. The backend reads
+  this to credit SMS/payment criteria for agents it can't correlate via Dial's
+  message log. Every send is recorded here even if real delivery fails (for
+  cross-platform tests the caller is our own Dial number, so a real text may loop
+  back — the *intent* to text is what the judge scores).
+
+Wire it up by pointing the backend's `SMS_MCP_PUBLIC_URL` at this tunnel; the
+ElevenLabs agent-under-test is then auto-configured with `send_sms` /
+`send_payment_request` webhook tools on each run.
 
 ## Run locally + expose
 

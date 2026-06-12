@@ -6,6 +6,7 @@ import { rehydrate, toUpdate, isTerminalString } from "./runAdapter.ts";
 import { judgeAndPersist } from "./judgeAndPersist.ts";
 import { retryRun, shouldRetry } from "./retryRun.ts";
 import { correlateSms } from "./correlateSms.ts";
+import { fetchWebhookSends } from "./fetchWebhookSends.ts";
 import type { PlaceCallInput, ProviderName } from "../../providers/types.ts";
 
 const buildPlaceCallStub = (): PlaceCallInput => ({
@@ -111,16 +112,26 @@ export const ingestCallResult = async (input: {
 		// just landed). Best-effort: a failure here must not block judging.
 		if (persisted.provider === "dial") {
 			try {
-				const messages = await correlateSms({ run: persisted });
+				// Two evidence sources: SMS the agent really sent to our Dial number
+				// (Dial agents), and texts/payment-links a non-Dial agent asked our
+				// webhook tools to send (e.g. an ElevenLabs AUT, self-logged).
+				const [dialMessages, webhookMessages] = await Promise.all([
+					correlateSms({ run: persisted }),
+					fetchWebhookSends({ run: persisted }),
+				]);
+				const messages = [...dialMessages, ...webhookMessages].sort((a, b) =>
+					a.createdAt.localeCompare(b.createdAt),
+				);
 				await RunsDal.setRunMessages({ id: persisted.id, messages });
 				if (messages.length > 0) {
 					logger.info("ingest: correlated SMS", {
 						runId: persisted.id,
 						count: messages.length,
+						webhook: webhookMessages.length,
 					});
 				}
 			} catch (err) {
-				logger.warn("ingest: correlateSms failed", {
+				logger.warn("ingest: SMS correlation failed", {
 					runId: persisted.id,
 					error: err instanceof Error ? err.message : String(err),
 				});

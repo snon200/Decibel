@@ -32,6 +32,8 @@ Rules for tests:
 - testerInstruction must tell the caller to speak like a real person on a phone call: casual, natural, spoken language, one or two short sentences at a time, no lists or long monologues.
 - Do not invent specifics not in the description (e.g. don't make up prices, dates, names) — design the tester to PROBE for these.
 - The bot is reached by phone, so write the tester instruction for a voice conversation, not a chat.
+- If the description mentions sending a confirmation/summary SMS or text, include at least one test whose testerInstruction has the caller confirm they received a text, with a criterion (kind "received_sms") that the bot sent a confirmation SMS during or shortly after the call.
+- If the description mentions taking payments, deposits, or sending a payment link, include at least one test whose testerInstruction has the caller agree to pay a deposit, with a criterion (kind "sms_content") that the bot texts a secure payment link instead of collecting card numbers over the phone.
 
 CRITERION KINDS — every criterion must include a "kind" field, one of:
 - "transcript"   — verifiable from the call transcript alone (no SMS involved). Use this for most criteria: things the bot said or did on the call. Default kind for any criterion that talks about the call.

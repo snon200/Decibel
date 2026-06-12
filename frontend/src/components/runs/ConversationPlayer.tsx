@@ -7,6 +7,8 @@ import {
 	formatTime,
 	parseTranscript,
 } from "../../utils/transcript";
+import { parseStripePayment } from "../../utils/stripePayment";
+import StripePaymentCard from "./StripePaymentCard";
 
 const SPEEDS = [1, 1.25, 1.5, 2] as const;
 
@@ -193,15 +195,27 @@ export default function ConversationPlayer({ url, transcript, durationSeconds, m
 						<SmsBadge>SMS</SmsBadge>
 						{messages.length} text{messages.length > 1 ? "s" : ""} from the agent
 					</SmsHeader>
-					{messages.map((m) => (
-						<SmsBubble key={m.id}>
-							<SmsMeta>
-								<SmsIcon aria-hidden>✉</SmsIcon>
-								{m.from} · {smsTiming(m)}
-							</SmsMeta>
-							<SmsBody dir="auto">{m.body}</SmsBody>
-						</SmsBubble>
-					))}
+					{messages.map((m) => {
+						const payment = parseStripePayment(m.body);
+						if (payment) {
+							return (
+								<StripePaymentCard
+									key={m.id}
+									payment={payment}
+									caption={`${m.from} · ${smsTiming(m)}`}
+								/>
+							);
+						}
+						return (
+							<SmsBubble key={m.id}>
+								<SmsMeta>
+									<SmsIcon aria-hidden>✉</SmsIcon>
+									{m.from} · {smsTiming(m)}
+								</SmsMeta>
+								<SmsBody dir="auto">{m.body}</SmsBody>
+							</SmsBubble>
+						);
+					})}
 				</SmsSection>
 			)}
 		</Card>

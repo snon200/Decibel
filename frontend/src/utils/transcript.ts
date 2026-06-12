@@ -35,6 +35,23 @@ const SPEAKER_SIDE: Record<string, TurnSide> = {
 	system: "center",
 };
 
+/**
+ * What we *show* the user for each raw speaker label. Dial's transcript labels
+ * the inbound side ("user"/"caller") as the test caller, so we surface it as
+ * "Tester" for clarity. Everything on the right side ("agent"/"assistant"/...)
+ * is the AUT and stays "Agent".
+ */
+const SPEAKER_DISPLAY: Record<string, string> = {
+	user: "Tester",
+	caller: "Tester",
+	tester: "Tester",
+	agent: "Agent",
+	assistant: "Agent",
+	bot: "Agent",
+	aut: "Agent",
+	system: "System",
+};
+
 const SPEAKER_PREFIX = /^\s*([A-Za-z][A-Za-z ]*?)\s*:\s*(.*)$/;
 
 const titleCase = (raw: string): string =>
@@ -42,6 +59,11 @@ const titleCase = (raw: string): string =>
 		.trim()
 		.toLowerCase()
 		.replace(/\b\w/g, (c) => c.toUpperCase());
+
+const displayLabelFor = (raw: string): string => {
+	const key = raw.trim().toLowerCase();
+	return SPEAKER_DISPLAY[key] ?? titleCase(raw);
+};
 
 /**
  * Parse a "Speaker: text" transcript into turns. Continuation lines (no speaker
@@ -60,7 +82,7 @@ export const parseTranscript = (transcript: string): Turn[] => {
 		const known = match ? SPEAKER_SIDE[match[1].trim().toLowerCase()] : undefined;
 
 		if (match && known) {
-			const label = titleCase(match[1]);
+			const label = displayLabelFor(match[1]);
 			const text = match[2].trim();
 			const prev = turns[turns.length - 1];
 			if (prev && prev.side === known && prev.label === label) {

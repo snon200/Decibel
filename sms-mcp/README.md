@@ -9,9 +9,14 @@ confirmation/summary.
 
 ## How it works
 
-- Exposes a single MCP tool, `send_sms({ body, to? })`, over Streamable HTTP at `POST /mcp`.
+- Exposes MCP tools over Streamable HTTP at `POST /mcp`:
+  - `send_sms({ body, to? })` — text the caller.
+  - `send_payment_request({ description, amountUsd?, to? })` — create a Stripe
+    (test-mode) Checkout Session and text the payment link to the caller. PCI-safe:
+    the agent never handles card numbers. Stripe disallows $0, so the minimum is
+    ~$0.50; defaults to $1.00. Requires `STRIPE_API_KEY` (sk_test_...).
 - On each call, Dial sends `X-Dial-User-Number` (the caller) and `X-Dial-Agent-Number`
-  (your Dial number). The tool defaults the recipient to the caller and sends from
+  (your Dial number). Tools default the recipient to the caller and send from
   the number the call is on, via Dial `POST /api/v1/messages`.
 
 ## Run locally + expose

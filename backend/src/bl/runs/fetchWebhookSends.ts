@@ -53,7 +53,11 @@ export const fetchWebhookSends = async (input: {
 				to: s.to,
 				body: s.body,
 				channel: "sms",
-				direction: "outbound",
+				// Canonical direction is the tester's perspective: a text the
+				// bot-under-test sent is one we *received*, so "inbound" — matching
+				// correlateSms (Dial path). The judge counts inbound SMS as evidence
+				// the bot texted, so this must agree or received_sms/sms_content fail.
+				direction: "inbound",
 				createdAt: s.createdAt,
 				secondsFromCallEnd:
 					callEnd === null ? null : Math.round((at - callEnd) / 1000),

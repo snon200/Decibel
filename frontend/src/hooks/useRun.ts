@@ -12,10 +12,21 @@ export const useRun = (id: string | undefined) =>
 		queryKey: id ? runKey(id) : ["run", "missing"],
 		queryFn: () => RunsApi.getRun(id as string),
 		enabled: Boolean(id),
+		// Two reasons to keep polling:
+		//  1. Call still in progress (non-terminal status).
+		//  2. Call finished but scoring hasn't landed yet — the judge runs
+		//     fire-and-forget after the transcript arrives, so overallScore
+		//     stays null for a few seconds after status flips to "completed".
 		refetchInterval: (query) => {
 			const data = query.state.data;
 			if (!data) return 1500;
-			return isTerminal(data.run.status) ? false : 1500;
+			const run = data.run;
+			if (!isTerminal(run.status)) return 1500;
+			const scoringPending =
+				run.status === "completed" &&
+				Boolean(run.transcript) &&
+				run.overallScore === null;
+			return scoringPending ? 1500 : false;
 		},
 	});
 

@@ -1,6 +1,6 @@
 # Decibel
 
-Management system for AI voice agents, built for the Dial Hackathon.
+Management system for AI voice agents testing, built for the Dial Hackathon.
 
 Architecture:
 
